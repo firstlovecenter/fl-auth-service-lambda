@@ -13,10 +13,10 @@ const signupSchema = z.object({
 })
 
 export const handler = async (
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   let session
-  
+
   try {
     // Parse request body
     const body = parseRequestBody(event.body)
@@ -33,8 +33,8 @@ export const handler = async (
 
     // Check if user already exists
     const existingUser = await session.run(
-      `MATCH (u:User {email: $email}) RETURN u LIMIT 1`,
-      { email }
+      `MATCH (u:Member {email: $email}) RETURN u LIMIT 1`,
+      { email },
     )
 
     if (existingUser.records.length > 0) {
@@ -46,7 +46,7 @@ export const handler = async (
 
     // Create user
     const result = await session.run(
-      `CREATE (person:User)
+      `CREATE (person:Member)
        SET person.id = randomUUID(),
            person.email = $email,
            person.password = $password,
@@ -60,7 +60,7 @@ export const handler = async (
         password: hashedPassword,
         firstName: firstName || '',
         lastName: lastName || '',
-      }
+      },
     )
 
     if (result.records.length === 0) {
@@ -79,7 +79,7 @@ export const handler = async (
           email: userEmail,
         },
       },
-      201
+      201,
     )
   } catch (error) {
     console.error('Signup error:', error)

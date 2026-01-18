@@ -11,10 +11,10 @@ const refreshTokenSchema = z.object({
 })
 
 export const handler = async (
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   let session
-  
+
   try {
     // Parse request body
     const body = parseRequestBody(event.body)
@@ -34,9 +34,9 @@ export const handler = async (
 
     // Check if user exists
     const result = await session.run(
-      `MATCH (u:User {id: $userId}) 
+      `MATCH (u:Member {id: $userId}) 
        RETURN u.id as id, u.email as email`,
-      { userId: decoded.userId }
+      { userId: decoded.userId },
     )
 
     if (result.records.length === 0) {
@@ -56,12 +56,12 @@ export const handler = async (
     })
   } catch (error) {
     console.error('Refresh token error:', error)
-    
+
     // Special handling for JWT errors
     if (error instanceof Error && error.message.includes('token')) {
       return errorResponse('Invalid or expired refresh token', 401)
     }
-    
+
     return errorResponse(parseError(error), 500)
   } finally {
     if (session) {

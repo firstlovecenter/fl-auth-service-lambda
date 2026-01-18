@@ -31,7 +31,7 @@ export const handler = async (
 
     // Find user
     const result = await session.run(
-      `MATCH (u:User {email: $email}) 
+      `MATCH (u:Members {email: $email}) 
        RETURN u.id as id, u.email as email, u.password as password, 
               u.firstName as firstName, u.lastName as lastName`,
       { email }
