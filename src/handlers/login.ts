@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import { z } from 'zod'
-import { getSession } from '../db/neo4j'
+import { initializeDB, getSession } from '../db/neo4j'
 import { comparePassword, signJWT, signRefreshToken } from '../utils/auth'
 import { errorResponse, successResponse } from '../utils/response'
 import { parseError, parseRequestBody } from '../utils/validation'
@@ -11,11 +11,14 @@ const loginSchema = z.object({
 })
 
 export const handler = async (
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   let session
-  
+
   try {
+    // IMPORTANT: Await the initialization
+    await initializeDB()
+
     // Parse request body
     const body = parseRequestBody(event.body)
 
@@ -31,13 +34,21 @@ export const handler = async (
 
     // Find user
     const result = await session.run(
-      `MATCH (u:Members {email: $email}) 
+      `MATCH (u:Member {email: $email}) 
        RETURN u.id as id, u.email as email, u.password as password, 
               u.firstName as firstName, u.lastName as lastName`,
-      { email }
+      { email },
     )
+    console.log('Query executed:', result.summary.query.text)
+    console.log('Parameters:', result.summary.query.parameters)
+    console.log('Records count:', result.records.length)
+    if (result.records.length > 0) {
+      console.log('First record keys:', result.records[0].keys)
+    }
+    console.log('Login query result records:', result.records)
 
     if (result.records.length === 0) {
+      console.log('No user found with email:', email)
       return errorResponse('Invalid email or password', 401)
     }
 
@@ -48,17 +59,44 @@ export const handler = async (
     const firstName = record.get('firstName')
     const lastName = record.get('lastName')
 
-    // Verify password
-    const isPasswordValid = await comparePassword(password, hashedPassword)
+    // Check if password is null (legacy user without password)
+    if (hashedPassword === null) {
+      // Legacy user: Generate a one-time setup token (short-lived)
+      const setupToken = signJWT(
+        { userId, email: userEmail, action: 'password_setup' },
+        '15m', // Pass expiresIn as second parameter
+      )
+
+      return successResponse(
+        {
+          message: 'Password setup required',
+          action_required: 'setup_password',
+          setup_token: setupToken,
+          user: {
+            id: userId,
+            email: userEmail,
+            firstName,
+            lastName,
+          },
+        },
+        202, // 202 Accepted signals "action needed"
+      )
+    }
+
+    // Existing password check (only if not null)
+    const isPasswordValid = await comparePassword(
+      password,
+      hashedPassword as string,
+    )
     if (!isPasswordValid) {
       return errorResponse('Invalid email or password', 401)
     }
 
     // Update last login
     await session.run(
-      `MATCH (u:User {id: $userId})
+      `MATCH (u:Member {id: $userId})
        SET u.lastLoginAt = datetime()`,
-      { userId }
+      { userId },
     )
 
     // Generate tokens

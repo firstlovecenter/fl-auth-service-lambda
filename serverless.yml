@@ -1,10 +1,14 @@
-service: auth-microservice
+service: auth-lambda
+
+useDotenv: true
+
+plugins:
+  - serverless-plugin-typescript
+  - serverless-offline
 
 provider:
   name: aws
-  runtime: nodejs20.x
-  stage: ${opt:stage, 'dev'}
-  region: ${opt:region, 'us-east-1'}
+  runtime: nodejs18.x
   environment:
     NEO4J_URI: ${env:NEO4J_URI}
     NEO4J_USER: ${env:NEO4J_USER}
@@ -14,7 +18,7 @@ provider:
 
 functions:
   signup:
-    handler: dist/handlers/signup.handler
+    handler: src/handlers/signup.handler
     events:
       - http:
           path: auth/signup
@@ -22,15 +26,23 @@ functions:
           cors: true
 
   login:
-    handler: dist/handlers/login.handler
+    handler: src/handlers/login.handler
     events:
       - http:
           path: auth/login
           method: post
           cors: true
 
+  setupPassword:
+    handler: src/handlers/setupPassword.handler
+    events:
+      - http:
+          path: auth/setup-password
+          method: post
+          cors: true
+
   verify:
-    handler: dist/handlers/verify.handler
+    handler: src/handlers/verify.handler
     events:
       - http:
           path: auth/verify
@@ -38,13 +50,9 @@ functions:
           cors: true
 
   refreshToken:
-    handler: dist/handlers/refreshToken.handler
+    handler: src/handlers/refreshToken.handler
     events:
       - http:
           path: auth/refresh
           method: post
           cors: true
-
-plugins:
-  - serverless-plugin-typescript
-  - serverless-offline
