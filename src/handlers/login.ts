@@ -10,6 +10,45 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 })
 
+const ROLES_CLAIM = 'roles'
+
+// Build roles from boolean flags (projection)
+function deriveRolesFromFlags(flags: any): string[] {
+  const roles: string[] = []
+
+  // Leaders
+  if (flags.leadsBacenta) roles.push('leaderBacenta')
+  if (flags.leadsCampus) roles.push('leaderCampus')
+  if (flags.leadsCouncil) roles.push('leaderCouncil')
+  if (flags.leadsStream) roles.push('leaderStream')
+  if (flags.leadsGovernorship) roles.push('leaderGovernorship')
+  if (flags.leadsOversight) roles.push('leaderOversight')
+  if (flags.leadsDenomination) roles.push('leaderDenomination')
+
+  // Admins
+  if (flags.isAdminForStream) roles.push('adminStream')
+  if (flags.isAdminForCampus) roles.push('adminCampus')
+  if (flags.isAdminForCouncil) roles.push('adminCouncil')
+  if (flags.isAdminForGovernorship) roles.push('adminGovernorship')
+  if (flags.isAdminForOversight) roles.push('adminOversight')
+  if (flags.isAdminForDenomination) roles.push('adminDenomination')
+
+  // Arrivals admins
+  if (flags.isArrivalsAdminForStream) roles.push('arrivalsAdminStream')
+  if (flags.isArrivalsAdminForCampus) roles.push('arrivalsAdminCampus')
+  if (flags.isArrivalsAdminForCouncil) roles.push('arrivalsAdminCouncil')
+  if (flags.isArrivalsAdminForGovernorship)
+    roles.push('arrivalsAdminGovernorship')
+
+  // Other arrivals / special roles
+  if (flags.isArrivalsCounterForStream) roles.push('arrivalsCounterStream')
+  if (flags.isArrivalsPayerCouncil) roles.push('tellerCouncil')
+  if (flags.isTellerForStream) roles.push('tellerStream')
+  if (flags.isSheepSeekerForStream) roles.push('sheepSeekerStream')
+
+  return [...new Set(roles)]
+}
+
 export const handler = async (
   event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
@@ -32,61 +71,89 @@ export const handler = async (
 
     session = getSession()
 
-    // Find user
+    // Find user + roles (flexible lookup by email/id/auth_id)
     const result = await session.run(
-      `MATCH (u:Member {email: $email}) 
-       RETURN u.id as id, u.email as email, u.password as password, 
-              u.firstName as firstName, u.lastName as lastName`,
-      { email },
+      `MATCH (m:Member)
+       WHERE ($email IS NOT NULL AND m.email = $email)
+          OR ($id IS NOT NULL AND m.id = $id)
+          OR ($auth_id IS NOT NULL AND m.auth_id = $auth_id)
+       RETURN
+         m { .id, .auth_id, .firstName, .lastName, .email, .password } AS member,
+         {
+           // Leadership / Leads
+           leadsBacenta:        exists((m)-[:LEADS]->(:Bacenta)),
+           leadsGovernorship:   exists((m)-[:LEADS]->(:Governorship)),
+           leadsCouncil:        exists((m)-[:LEADS]->(:Council)),
+           leadsStream:         exists((m)-[:LEADS]->(:Stream)),
+           leadsCampus:         exists((m)-[:LEADS]->(:Campus)),
+           leadsOversight:      exists((m)-[:LEADS]->(:Oversight)),
+           leadsDenomination:   exists((m)-[:LEADS]->(:Denomination)),
+
+           // Admin
+           isAdminForCampus:        exists((m)-[:IS_ADMIN_FOR]->(:Campus)),
+           isAdminForGovernorship:  exists((m)-[:IS_ADMIN_FOR]->(:Governorship)),
+           isAdminForCouncil:       exists((m)-[:IS_ADMIN_FOR]->(:Council)),
+           isAdminForStream:        exists((m)-[:IS_ADMIN_FOR]->(:Stream)),
+           isAdminForOversight:     exists((m)-[:IS_ADMIN_FOR]->(:Oversight)),
+           isAdminForDenomination:  exists((m)-[:IS_ADMIN_FOR]->(:Denomination)),
+
+           // Arrivals Admin
+           isArrivalsAdminForGovernorship: exists((m)-[:DOES_ARRIVALS_FOR]->(:Governorship)),
+           isArrivalsAdminForCouncil:      exists((m)-[:DOES_ARRIVALS_FOR]->(:Council)),
+           isArrivalsAdminForStream:       exists((m)-[:DOES_ARRIVALS_FOR]->(:Stream)),
+           isArrivalsAdminForCampus:       exists((m)-[:DOES_ARRIVALS_FOR]->(:Campus)),
+
+           // Other Arrivals / Special Roles
+           isArrivalsCounterForStream:     exists((m)-[:COUNTS_ARRIVALS_FOR]->(:Stream)),
+           isArrivalsPayerCouncil:         exists((m)-[:CONFIRMS_ARRIVALS_FOR]->(:Council)),
+           isTellerForStream:              exists((m)-[:IS_TELLER_FOR]->(:Stream)),
+           isSheepSeekerForStream:         exists((m)-[:IS_SHEEP_SEEKER_FOR]->(:Stream))
+         } AS roles`,
+      {
+        email,
+        id: null,
+        auth_id: null,
+      },
     )
-    console.log('Query executed:', result.summary.query.text)
-    console.log('Parameters:', result.summary.query.parameters)
-    console.log('Records count:', result.records.length)
-    if (result.records.length > 0) {
-      console.log('First record keys:', result.records[0].keys)
-    }
-    console.log('Login query result records:', result.records)
 
     if (result.records.length === 0) {
-      console.log('No user found with email:', email)
       return errorResponse('Invalid email or password', 401)
     }
 
     const record = result.records[0]
-    const userId = record.get('id')
-    const userEmail = record.get('email')
-    const hashedPassword = record.get('password')
-    const firstName = record.get('firstName')
-    const lastName = record.get('lastName')
+    const member = record.get('member')
+    const roleFlags = record.get('roles') as Record<string, boolean>
 
-    // Check if password is null (legacy user without password)
-    if (hashedPassword === null) {
-      // Legacy user: Generate a one-time setup token (short-lived)
+    // Legacy: no password set → setup flow
+    if (member.password == null) {
       const setupToken = signJWT(
-        { userId, email: userEmail, action: 'password_setup' },
-        '15m', // Pass expiresIn as second parameter
+        {
+          userId: member.id ?? member.auth_id,
+          email: member.email,
+          action: 'password_setup',
+        },
+        '15m',
       )
-
       return successResponse(
         {
           message: 'Password setup required',
           action_required: 'setup_password',
           setup_token: setupToken,
           user: {
-            id: userId,
-            email: userEmail,
-            firstName,
-            lastName,
+            id: member.id,
+            email: member.email,
+            firstName: member.firstName,
+            lastName: member.lastName,
           },
         },
-        202, // 202 Accepted signals "action needed"
+        202,
       )
     }
 
-    // Existing password check (only if not null)
+    // Verify password
     const isPasswordValid = await comparePassword(
       password,
-      hashedPassword as string,
+      String(member.password),
     )
     if (!isPasswordValid) {
       return errorResponse('Invalid email or password', 401)
@@ -94,24 +161,62 @@ export const handler = async (
 
     // Update last login
     await session.run(
-      `MATCH (u:Member {id: $userId})
-       SET u.lastLoginAt = datetime()`,
-      { userId },
+      `MATCH (u:Member {id: $userId}) SET u.lastLoginAt = datetime()`,
+      { userId: member.id },
     )
 
-    // Generate tokens
-    const accessToken = signJWT({ userId, email: userEmail })
-    const refreshToken = signRefreshToken({ userId, email: userEmail })
+    // Build roles from boolean flags (explicit mapping)
+    const jwtRoles: string[] = []
+    if (roleFlags.leadsBacenta) jwtRoles.push('leaderBacenta')
+    if (roleFlags.leadsGovernorship) jwtRoles.push('leaderGovernorship')
+    if (roleFlags.leadsCouncil) jwtRoles.push('leaderCouncil')
+    if (roleFlags.leadsStream) jwtRoles.push('leaderStream')
+    if (roleFlags.leadsCampus) jwtRoles.push('leaderCampus')
+    if (roleFlags.leadsOversight) jwtRoles.push('leaderOversight')
+    if (roleFlags.leadsDenomination) jwtRoles.push('leaderDenomination')
+
+    if (roleFlags.isAdminForCampus) jwtRoles.push('adminCampus')
+    if (roleFlags.isAdminForGovernorship) jwtRoles.push('adminGovernorship')
+    if (roleFlags.isAdminForCouncil) jwtRoles.push('adminCouncil')
+    if (roleFlags.isAdminForStream) jwtRoles.push('adminStream')
+    if (roleFlags.isAdminForOversight) jwtRoles.push('adminOversight')
+    if (roleFlags.isAdminForDenomination) jwtRoles.push('adminDenomination')
+
+    if (roleFlags.isArrivalsAdminForGovernorship)
+      jwtRoles.push('arrivalsAdminGovernorship')
+    if (roleFlags.isArrivalsAdminForCouncil)
+      jwtRoles.push('arrivalsAdminCouncil')
+    if (roleFlags.isArrivalsAdminForStream) jwtRoles.push('arrivalsAdminStream')
+    if (roleFlags.isArrivalsAdminForCampus) jwtRoles.push('arrivalsAdminCampus')
+
+    if (roleFlags.isArrivalsCounterForStream)
+      jwtRoles.push('arrivalsCounterStream')
+    if (roleFlags.isArrivalsPayerCouncil) jwtRoles.push('tellerCouncil')
+    if (roleFlags.isTellerForStream) jwtRoles.push('tellerStream')
+    if (roleFlags.isSheepSeekerForStream) jwtRoles.push('sheepSeekerStream')
+
+    const roles = [...new Set(jwtRoles)]
+
+    // Issue tokens with custom claim
+    const payload = {
+      sub: member.id ?? member.auth_id,
+      userId: member.id,
+      email: member.email,
+      [ROLES_CLAIM]: roles,
+    }
+
+    const accessToken = signJWT(payload, '30m')
+    const refreshToken = signRefreshToken(payload)
 
     return successResponse({
       message: 'Login successful',
       accessToken,
       refreshToken,
       user: {
-        id: userId,
-        email: userEmail,
-        firstName,
-        lastName,
+        id: member.id,
+        email: member.email,
+        firstName: member.firstName,
+        lastName: member.lastName,
       },
     })
   } catch (error) {
