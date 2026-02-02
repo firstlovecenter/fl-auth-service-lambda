@@ -1,0 +1,85 @@
+name: Deploy Auth Lambda to AWS
+
+on:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
+
+jobs:
+    deploy:
+        name: Deploy to AWS Lambda
+        runs-on: ubuntu-latest
+        environment: production
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "18"
+                  cache: "npm"
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build TypeScript
+              run: npm run build
+
+            - name: Configure AWS credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ secrets.AWS_REGION }}
+
+            - name: Prepare Lambda package
+              run: |
+                  # Create temporary directory for Lambda deployment
+                  mkdir -p lambda-package
+                  
+                  # Copy compiled JavaScript files
+                  cp -r dist/* lambda-package/ || true
+                  
+                  # Copy package.json for reference
+                  cp package.json lambda-package/
+                  
+                  # Install production dependencies
+                  cd lambda-package
+                  npm install --omit=dev
+
+            - name: Create deployment package
+              run: |
+                  cd lambda-package
+                  zip -r ../auth-lambda.zip .
+
+            - name: Deploy Lambda function
+              run: |
+                  aws lambda update-function-code \
+                    --function-name auth-lambda \
+                    --zip-file fileb://auth-lambda.zip
+
+            - name: Update environment variables
+              run: |
+                  aws lambda update-function-configuration \
+                    --function-name auth-lambda \
+                    --environment "Variables={NEO4J_URI=${{ secrets.NEO4J_URI }},NEO4J_USER=${{ secrets.NEO4J_USER }},NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }},JWT_SECRET=${{ secrets.JWT_SECRET }},PEPPER=${{ secrets.PEPPER }}}"
+
+            - name: Verify deployment
+              run: |
+                  echo "Lambda functions deployed successfully!"
+                  aws lambda list-functions \
+                    --query "Functions[?contains(FunctionName, 'auth-lambda')].{Name:FunctionName,Runtime:Runtime,LastModified:LastModified}" \
+                    --output table
+
+            - name: Notify deployment status
+              if: always()
+              uses: 8398a7/action-slack@v3
+              with:
+                  status: ${{ job.status }}
+                  text: "Auth Lambda Deployment ${{ job.status }}"
+                  webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+                  fields: repo,message,commit,author
+              continue-on-error: true

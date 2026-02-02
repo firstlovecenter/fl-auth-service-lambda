@@ -1,0 +1,154 @@
+import { Request, Response } from 'express'
+import { z } from 'zod'
+import { initializeDB, getSession } from '../db/neo4j'
+import { comparePassword, signJWT, signRefreshToken } from '../utils/auth'
+import { asyncHandler, ApiError } from '../middleware/errorHandler'
+
+const loginSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required'),
+})
+
+const ROLES_CLAIM = 'roles'
+
+function deriveRolesFromFlags(flags: any): string[] {
+  const roles: string[] = []
+
+  if (flags.leadsBacenta) roles.push('leaderBacenta')
+  if (flags.leadsCampus) roles.push('leaderCampus')
+  if (flags.leadsCouncil) roles.push('leaderCouncil')
+  if (flags.leadsStream) roles.push('leaderStream')
+  if (flags.leadsGovernorship) roles.push('leaderGovernorship')
+  if (flags.leadsOversight) roles.push('leaderOversight')
+  if (flags.leadsDenomination) roles.push('leaderDenomination')
+
+  if (flags.isAdminForStream) roles.push('adminStream')
+  if (flags.isAdminForCampus) roles.push('adminCampus')
+  if (flags.isAdminForCouncil) roles.push('adminCouncil')
+  if (flags.isAdminForGovernorship) roles.push('adminGovernorship')
+  if (flags.isAdminForOversight) roles.push('adminOversight')
+  if (flags.isAdminForDenomination) roles.push('adminDenomination')
+
+  if (flags.isArrivalsAdminForStream) roles.push('arrivalsAdminStream')
+  if (flags.isArrivalsAdminForCampus) roles.push('arrivalsAdminCampus')
+  if (flags.isArrivalsAdminForCouncil) roles.push('arrivalsAdminCouncil')
+  if (flags.isArrivalsAdminForGovernorship)
+    roles.push('arrivalsAdminGovernorship')
+
+  if (flags.isArrivalsCounterForStream) roles.push('arrivalsCounterStream')
+  if (flags.isArrivalsPayerCouncil) roles.push('tellerCouncil')
+  if (flags.isTellerForStream) roles.push('tellerStream')
+  if (flags.isSheepSeekerForStream) roles.push('sheepSeekerStream')
+
+  return [...new Set(roles)]
+}
+
+export const login = asyncHandler(async (req: Request, res: Response) => {
+  let session
+
+  try {
+    await initializeDB()
+
+    const { email, password } = loginSchema.parse(req.body)
+
+    session = getSession()
+
+    const result = await session.run(
+      `MATCH (m:Member)
+       WHERE ($email IS NOT NULL AND m.email = $email)
+          OR ($id IS NOT NULL AND m.id = $id)
+          OR ($auth_id IS NOT NULL AND m.auth_id = $auth_id)
+       RETURN
+         m { .id, .auth_id, .firstName, .lastName, .email, .password } AS member,
+         {
+           leadsBacenta:        exists((m)-[:LEADS]->(:Bacenta)),
+           leadsGovernorship:   exists((m)-[:LEADS]->(:Governorship)),
+           leadsCouncil:        exists((m)-[:LEADS]->(:Council)),
+           leadsStream:         exists((m)-[:LEADS]->(:Stream)),
+           leadsCampus:         exists((m)-[:LEADS]->(:Campus)),
+           leadsOversight:      exists((m)-[:LEADS]->(:Oversight)),
+           leadsDenomination:   exists((m)-[:LEADS]->(:Denomination)),
+           isAdminForCampus:        exists((m)-[:IS_ADMIN_FOR]->(:Campus)),
+           isAdminForGovernorship:  exists((m)-[:IS_ADMIN_FOR]->(:Governorship)),
+           isAdminForCouncil:       exists((m)-[:IS_ADMIN_FOR]->(:Council)),
+           isAdminForStream:        exists((m)-[:IS_ADMIN_FOR]->(:Stream)),
+           isAdminForOversight:     exists((m)-[:IS_ADMIN_FOR]->(:Oversight)),
+           isAdminForDenomination:  exists((m)-[:IS_ADMIN_FOR]->(:Denomination)),
+           isArrivalsAdminForStream:        exists((m)-[:IS_ARRIVALS_ADMIN_FOR]->(:Stream)),
+           isArrivalsAdminForCampus:       exists((m)-[:IS_ARRIVALS_ADMIN_FOR]->(:Campus)),
+           isArrivalsAdminForCouncil:      exists((m)-[:IS_ARRIVALS_ADMIN_FOR]->(:Council)),
+           isArrivalsAdminForGovernorship: exists((m)-[:IS_ARRIVALS_ADMIN_FOR]->(:Governorship)),
+           isArrivalsCounterForStream:     exists((m)-[:IS_ARRIVALS_COUNTER_FOR]->(:Stream)),
+           isArrivalsPayerCouncil:         exists((m)-[:IS_ARRIVALS_PAYER_FOR]->(:Council)),
+           isTellerForStream:              exists((m)-[:IS_TELLER_FOR]->(:Stream)),
+           isSheepSeekerForStream:         exists((m)-[:IS_SHEEP_SEEKER_FOR]->(:Stream))
+         } AS flags
+       LIMIT 1`,
+      { email, id: null, auth_id: null },
+    )
+
+    if (result.records.length === 0) {
+      throw new ApiError(401, 'Invalid email or password')
+    }
+
+    const record = result.records[0]
+    const member = record.get('member')
+    const flags = record.get('flags')
+
+    const passwordMatch = await comparePassword(password, member.password)
+    if (!passwordMatch) {
+      throw new ApiError(401, 'Invalid email or password')
+    }
+
+    const roles = deriveRolesFromFlags(flags)
+
+    // Check if password needs to be set up
+    const setupTokenResult = await session.run(
+      `MATCH (m:Member {id: $userId})-[:HAS_TOKEN]->(token:SetupToken) RETURN token LIMIT 1`,
+      { userId: member.id },
+    )
+
+    if (setupTokenResult.records.length > 0) {
+      return res.status(202).json({
+        message: 'Password setup required',
+        setupRequired: true,
+      })
+    }
+
+    // Generate tokens
+    const accessToken = signJWT(
+      {
+        userId: member.id,
+        email: member.email,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        [ROLES_CLAIM]: roles,
+      },
+      '30m',
+    )
+
+    const refreshToken = signRefreshToken({
+      userId: member.id,
+      email: member.email,
+    })
+
+    res.status(200).json({
+      message: 'Login successful',
+      tokens: {
+        accessToken,
+        refreshToken,
+      },
+      user: {
+        id: member.id,
+        email: member.email,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        roles,
+      },
+    })
+  } finally {
+    if (session) {
+      await session.close()
+    }
+  }
+})
