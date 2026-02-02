@@ -15,7 +15,7 @@ export const verify = asyncHandler(async (req: Request, res: Response) => {
   try {
     const { token } = verifySchema.parse(req.body)
 
-    const decoded = verifyJWT(token) as JWTPayload
+    const decoded = await verifyJWT(token)
 
     session = getSession()
 

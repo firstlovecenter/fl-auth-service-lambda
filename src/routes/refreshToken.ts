@@ -15,7 +15,7 @@ export const refreshToken = asyncHandler(async (req: Request, res: Response) => 
   try {
     const { refreshToken } = refreshTokenSchema.parse(req.body)
 
-    const decoded = verifyJWT(refreshToken) as JWTPayload
+    const decoded = (await verifyJWT(refreshToken)) as JWTPayload
 
     session = getSession()
 
@@ -33,7 +33,7 @@ export const refreshToken = asyncHandler(async (req: Request, res: Response) => 
     const userId = record.get('id')
     const email = record.get('email')
 
-    const newAccessToken = signJWT({ userId, email })
+    const newAccessToken = await signJWT({ userId, email })
 
     res.status(200).json({
       message: 'Token refreshed successfully',

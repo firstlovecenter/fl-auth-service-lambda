@@ -72,8 +72,8 @@ export const setupPassword = asyncHandler(async (req: Request, res: Response) =>
       const firstName = record.get('firstName')
       const lastName = record.get('lastName')
 
-      const accessToken = signJWT({ userId, email: userEmail })
-      const newRefreshToken = signRefreshToken({ userId, email: userEmail })
+      const accessToken = await signJWT({ userId, email: userEmail })
+      const newRefreshToken = await signRefreshToken({ userId, email: userEmail })
 
       res.status(200).json({
         message: 'Setup complete - welcome!',

@@ -28,7 +28,7 @@ export const handler = async (
     const { refreshToken } = parseResult.data
 
     // Verify refresh token
-    const decoded = verifyJWT(refreshToken) as JWTPayload
+    const decoded = (await verifyJWT(refreshToken)) as JWTPayload
 
     session = getSession()
 

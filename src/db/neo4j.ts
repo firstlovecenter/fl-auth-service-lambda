@@ -1,4 +1,5 @@
 import neo4j, { Driver, Session } from 'neo4j-driver'
+import { getSecret } from '../utils/secrets'
 
 let driver: Driver | null = null
 
@@ -7,29 +8,34 @@ export async function initializeDB(): Promise<Driver> {
     return driver
   }
 
-  const uri = process.env.NEO4J_URI || 'neo4j://localhost:7687'
-  const user = process.env.NEO4J_USER || 'neo4j'
-  const password = process.env.NEO4J_PASSWORD || 'password'
-
-  console.log('Connecting to Neo4j at:', uri)
-
-  driver = neo4j.driver(uri, neo4j.auth.basic(user, password), {
-    maxConnectionPoolSize: 50,
-    connectionAcquisitionTimeout: 10000,
-  })
-
-  // Verify connection works
   try {
-    await driver.verifyAuthentication()
-    console.log('Successfully connected to Neo4j database')
+    const uri = await getSecret('NEO4J_URI')
+    const user = await getSecret('NEO4J_USER')
+    const password = await getSecret('NEO4J_PASSWORD')
+
+    console.log('Connecting to Neo4j at:', uri)
+
+    driver = neo4j.driver(uri, neo4j.auth.basic(user, password), {
+      maxConnectionPoolSize: 50,
+      connectionAcquisitionTimeout: 10000,
+    })
+
+    // Verify connection works
+    try {
+      await driver.verifyAuthentication()
+      console.log('Successfully connected to Neo4j database')
+    } catch (error) {
+      console.error('Failed to connect to Neo4j:', error)
+      await driver.close()
+      driver = null
+      throw error
+    }
+
+    return driver
   } catch (error) {
-    console.error('Failed to connect to Neo4j:', error)
-    await driver.close()
-    driver = null
+    console.error('Failed to initialize database:', error)
     throw error
   }
-
-  return driver
 }
 
 export function getSession(): Session {

@@ -28,7 +28,7 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response) =>
       throw new ApiError(400, 'Account deletion must be explicitly confirmed')
     }
 
-    const decoded = verifyJWT(token) as JWTPayload
+    const decoded = (await verifyJWT(token)) as JWTPayload
 
     session = getSession()
 

@@ -28,7 +28,7 @@ export const handler = async (
     const { token } = parseResult.data
 
     // Verify token
-    const decoded = verifyJWT(token) as JWTPayload
+    const decoded = (await verifyJWT(token)) as JWTPayload
 
     session = getSession()
 

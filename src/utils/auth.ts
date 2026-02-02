@@ -1,71 +1,84 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import type { SignOptions, JwtPayload } from 'jsonwebtoken'
+import { getSecret } from './secrets'
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Environment & Constants
+// Cached secrets
 // ──────────────────────────────────────────────────────────────────────────────
 
-const PEPPER = process.env.PEPPER ?? '' // fallback to empty string is safe
+let cachedJWTSecret: string | null = null
+let cachedPepper: string | null = null
 
-const JWT_SECRET = process.env.JWT_SECRET
+// ──────────────────────────────────────────────────────────────────────────────
+// Get secrets (cached)
+// ──────────────────────────────────────────────────────────────────────────────
 
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET environment variable is required')
+const getJWTSecret = async (): Promise<string> => {
+  if (!cachedJWTSecret) {
+    cachedJWTSecret = await getSecret('JWT_SECRET')
+  }
+  return cachedJWTSecret
 }
 
-// We know it's defined now → helps TS
-const secret = JWT_SECRET as string // or Buffer if you ever switch to binary secret
+const getPepper = async (): Promise<string> => {
+  if (!cachedPepper) {
+    cachedPepper = await getSecret('PEPPER')
+  }
+  return cachedPepper
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Password Hashing (with pepper)
 // ──────────────────────────────────────────────────────────────────────────────
 
 export const hashPassword = async (password: string): Promise<string> => {
-  // Pepper + good cost factor (12–13 is common; 14+ if you can afford it)
-  return bcrypt.hash(password + PEPPER, 12)
+  const pepper = await getPepper()
+  return bcrypt.hash(password + pepper, 12)
 }
 
 export const comparePassword = async (
   raw: string,
   hash: string,
 ): Promise<boolean> => {
-  return bcrypt.compare(raw + PEPPER, hash)
+  const pepper = await getPepper()
+  return bcrypt.compare(raw + pepper, hash)
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // JWT Helpers
 // ──────────────────────────────────────────────────────────────────────────────
 
-type Payload = Record<string, unknown> // or define stricter interface: { userId: string; role: string; ... }
+type Payload = Record<string, unknown>
 
 const DEFAULT_SIGN_OPTIONS: SignOptions = {
   expiresIn: '30m',
 }
 
-export const signJWT = (
+export const signJWT = async (
   payload: Record<string, unknown>,
   expiresIn: string | number = '30m',
-): string => {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn } as any)
+): Promise<string> => {
+  const secret = await getJWTSecret()
+  return jwt.sign(payload, secret, { expiresIn } as any)
 }
 
-export const signRefreshToken = (payload: Payload): string => {
+export const signRefreshToken = async (payload: Record<string, unknown>): Promise<string> => {
+  const secret = await getJWTSecret()
   return jwt.sign(payload, secret, { expiresIn: '7d' })
 }
 
-export const verifyJWT = (token: string): JwtPayload => {
+export const verifyJWT = async (token: string): Promise<JwtPayload> => {
   try {
+    const secret = await getJWTSecret()
     const decoded = jwt.verify(token, secret)
 
-    // jwt.verify returns string | JwtPayload | object — we almost always want JwtPayload
     if (typeof decoded === 'string') {
       throw new Error('Unexpected string payload from JWT')
     }
 
     return decoded as JwtPayload
   } catch (error) {
-    // You can be more granular if you want:
     // if (error instanceof jwt.TokenExpiredError) { ... }
     throw new Error('Invalid or expired token')
   }

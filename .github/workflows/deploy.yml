@@ -4,11 +4,21 @@ on:
     push:
         branches:
             - main
+            - dev
         paths:
-            - "src/**" # Only trigger when source code changes
+            - "src/**"
             - "package.json"
             - "tsconfig.json"
     workflow_dispatch:
+        inputs:
+            environment:
+                description: "Environment to deploy to"
+                required: true
+                default: "dev"
+                type: choice
+                options:
+                    - dev
+                    - main
 
 jobs:
     deploy:
@@ -19,6 +29,17 @@ jobs:
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
+
+            - name: Determine deployment target
+              id: target
+              run: |
+                  if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+                    echo "FUNCTION_NAME=fl-auth-service-lambda" >> $GITHUB_OUTPUT
+                    echo "ENVIRONMENT=production" >> $GITHUB_OUTPUT
+                  else
+                    echo "FUNCTION_NAME=dev-fl-auth-service-lambda" >> $GITHUB_OUTPUT
+                    echo "ENVIRONMENT=development" >> $GITHUB_OUTPUT
+                  fi
 
             - name: Setup Node.js
               uses: actions/setup-node@v4
@@ -58,6 +79,34 @@ jobs:
               run: |
                   cd lambda-package
                   zip -r ../auth-lambda.zip .
+
+            - name: Deploy Lambda function
+              run: |
+                  aws lambda update-function-code \
+                    --function-name ${{ steps.target.outputs.FUNCTION_NAME }} \
+                    --zip-file fileb://auth-lambda.zip
+
+            - name: Verify deployment
+              run: |
+                  echo "Lambda function deployed successfully!"
+                  aws lambda get-function \
+                    --function-name ${{ steps.target.outputs.FUNCTION_NAME }} \
+                    --query 'Configuration.{Name:FunctionName,Runtime:Runtime,LastModified:LastModified}' \
+                    --output table
+
+            - name: Notify deployment status
+              if: always()
+              uses: rtCamp/action-slack-notify@v2
+              env:
+                  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+                  SLACK_CHANNEL: deployments
+                  SLACK_COLOR: ${{ job.status }}
+                  SLACK_TITLE: "🔐 FL Auth Service Lambda Deployment"
+                  SLACK_MESSAGE: |
+                      Environment: ${{ steps.target.outputs.ENVIRONMENT }}
+                      Function: ${{ steps.target.outputs.FUNCTION_NAME }}
+                      Commit: ${{ github.event.head_commit.message }}
+                      Status: ${{ job.status }}
 
             - name: Deploy Lambda function
               run: |

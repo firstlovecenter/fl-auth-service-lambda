@@ -116,7 +116,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     }
 
     // Generate tokens
-    const accessToken = signJWT(
+    const accessToken = await signJWT(
       {
         userId: member.id,
         email: member.email,
@@ -127,7 +127,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
       '30m',
     )
 
-    const refreshToken = signRefreshToken({
+    const refreshToken = await signRefreshToken({
       userId: member.id,
       email: member.email,
     })
