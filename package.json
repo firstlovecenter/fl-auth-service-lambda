@@ -1,5 +1,5 @@
 {
-  "name": "auth-lambda-microservice",
+  "name": "fl-auth-service-lambda",
   "version": "1.0.0",
   "description": "Authentication microservice using AWS Lambda, Neo4j, and TypeScript",
   "main": "dist/index.js",
