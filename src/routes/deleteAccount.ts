@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { getSession } from '../db/neo4j'
 import { verifyJWT } from '../utils/auth'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
+import { sendAccountDeletionEmail } from '../utils/notifications'
 import type { JWTPayload } from '../types'
 
 const deleteAccountSchema = z.object({
@@ -36,6 +37,17 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response) =>
     const tx = session.beginTransaction()
 
     try {
+      // Fetch user email before deletion
+      const userResult = await tx.run(
+        `MATCH (u:Member {id: $userId})
+         RETURN u.email as email`,
+        { userId: decoded.userId },
+      )
+
+      const userEmail = userResult.records.length > 0 
+        ? userResult.records[0].get('email') 
+        : null
+
       // Delete all related data (cascade delete)
       // This ensures referential integrity
       await tx.run(
@@ -45,6 +57,14 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response) =>
       )
 
       await tx.commit()
+
+      // Send account deletion confirmation email (non-blocking)
+      if (userEmail) {
+        sendAccountDeletionEmail(userEmail).catch((error) => {
+          console.error('Failed to send account deletion email:', error)
+          // Don't fail the request if email fails
+        })
+      }
 
       res.status(200).json({
         message: 'Account deleted successfully',

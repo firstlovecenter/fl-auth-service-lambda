@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { getSession } from '../db/neo4j'
 import { hashPassword } from '../utils/auth'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
+import { sendWelcomeEmail } from '../utils/notifications'
 
 const signupSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -59,6 +60,12 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
     const record = result.records[0]
     const userId = record.get('id')
     const userEmail = record.get('email')
+
+    // Send welcome email (non-blocking)
+    sendWelcomeEmail(userEmail, firstName || 'User').catch((error) => {
+      console.error('Failed to send welcome email:', error)
+      // Don't fail the request if email fails
+    })
 
     res.status(201).json({
       message: 'User created successfully',

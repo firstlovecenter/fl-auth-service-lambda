@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { getSession } from '../db/neo4j'
 import { verifyJWT, comparePassword, hashPassword } from '../utils/auth'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
+import { sendPasswordResetEmail } from '../utils/notifications'
 import type { JWTPayload } from '../types'
 
 const resetPasswordSchema = z.object({
@@ -65,6 +66,12 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
        RETURN u.id`,
       { userId, password: hashedPassword },
     )
+
+    // Send password reset confirmation email (non-blocking)
+    sendPasswordResetEmail(email).catch((error) => {
+      console.error('Failed to send password reset email:', error)
+      // Don't fail the request if email fails
+    })
 
     res.status(200).json({
       message: 'Password updated successfully',

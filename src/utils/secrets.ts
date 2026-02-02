@@ -15,6 +15,8 @@ interface Secrets {
   NEO4J_URI: string
   NEO4J_USER: string
   NEO4J_PASSWORD: string
+  NOTIFICATION_SECRET_KEY: string
+  ENVIRONMENT: string
 }
 
 let secretsCache: Secrets | null = null
