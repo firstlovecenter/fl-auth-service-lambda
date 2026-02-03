@@ -2,104 +2,63 @@ import neo4j, { Driver, Session } from 'neo4j-driver'
 import { getSecret } from '../utils/secrets'
 
 let driver: Driver | null = null
-let initializingPromise: Promise<Driver> | null = null
+let isInitialized = false
 
-const RETRY_CONFIG = {
-  maxRetries: 3,
-  initialBackoffMs: 1000,
-  maxBackoffMs: 10000,
-}
-
-async function retryWithBackoff<T>(
-  fn: () => Promise<T>,
-  retries = RETRY_CONFIG.maxRetries
-): Promise<T> {
-  let lastError: Error | null = null
-
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await fn()
-    } catch (error) {
-      lastError = error as Error
-      if (i < retries - 1) {
-        const backoffMs = Math.min(
-          RETRY_CONFIG.initialBackoffMs * Math.pow(2, i),
-          RETRY_CONFIG.maxBackoffMs
-        )
-        console.log(
-          `Connection attempt ${i + 1} failed, retrying in ${backoffMs}ms...`,
-          error instanceof Error ? error.message : String(error)
-        )
-        await new Promise((resolve) => setTimeout(resolve, backoffMs))
-      }
-    }
-  }
-
-  throw lastError
+const DEFAULT_NEO4J_CONFIG = {
+  maxConnectionPoolSize: 50,
+  connectionTimeout: 30000,
+  logging: {
+    level: 'info' as const,
+    logger: (level: string, message: string) =>
+      console.log(`[Neo4j ${level}] ${message}`),
+  },
 }
 
 export async function initializeDB(): Promise<Driver> {
-  if (driver) {
+  if (isInitialized && driver) {
     return driver
   }
 
-  // Prevent multiple concurrent initialization attempts
-  if (initializingPromise) {
-    return initializingPromise
-  }
+  console.log('[Neo4j] Starting database initialization')
 
-  initializingPromise = (async () => {
+  try {
+    let uri = await getSecret('NEO4J_URI')
+    const user = await getSecret('NEO4J_USER')
+    const password = await getSecret('NEO4J_PASSWORD')
+
+    // Handle encrypted connection if required
+    const isEncrypted = uri.includes('neo4j+s://')
+    console.log(
+      `[Neo4j] Connecting to ${uri.replace(/:\/\/.*@/, '://[REDACTED]@')} (encrypted: ${isEncrypted})`
+    )
+
+    driver = neo4j.driver(
+      uri,
+      neo4j.auth.basic(user, password),
+      DEFAULT_NEO4J_CONFIG
+    )
+
+    // Verify connection
     try {
-      let uri = await getSecret('NEO4J_URI')
-      const user = await getSecret('NEO4J_USER')
-      const password = await getSecret('NEO4J_PASSWORD')
-
-      console.log('Connecting to Neo4j at:', uri)
-
-      // Create driver with improved connection settings
-      driver = neo4j.driver(uri, neo4j.auth.basic(user, password), {
-        maxConnectionPoolSize: 50,
-        connectionAcquisitionTimeout: 30000, // Increased from 10s to 30s
-        maxTransactionRetryTime: 15000,
-        connectionTimeout: 30000, // Add connection timeout
-        disableLosslessIntegers: true,
-        // Keep-alive for long-lived connections
-        trust: 'TRUST_ALL_CERTIFICATES',
-      })
-
-      // Verify connection works with retries
-      await retryWithBackoff(async () => {
-        try {
-          await driver!.verifyAuthentication()
-          console.log('Successfully connected to Neo4j database')
-        } catch (error) {
-          if (
-            error instanceof Error &&
-            error.message &&
-            error.message.includes('ServiceUnavailable')
-          ) {
-            throw new Error('Neo4j database is unavailable')
-          }
-          throw error
-        }
-      })
-
-      return driver
+      await driver.verifyConnectivity()
+      console.log('[Neo4j] Connection established successfully')
+      isInitialized = true
     } catch (error) {
-      console.error('Failed to initialize database:', error)
-      if (driver) {
-        await driver.close().catch((err) =>
-          console.error('Error closing failed driver:', err)
-        )
-        driver = null
-      }
+      console.error('[Neo4j] Connection verification failed:', error)
+      await driver.close().catch((err) =>
+        console.error('[Neo4j] Error closing failed driver:', err)
+      )
+      driver = null
+      isInitialized = false
       throw error
-    } finally {
-      initializingPromise = null
     }
-  })()
 
-  return initializingPromise
+    return driver
+  } catch (error) {
+    console.error('[Neo4j] Database initialization failed:', error)
+    isInitialized = false
+    throw error
+  }
 }
 
 export function getSession(): Session {
@@ -110,32 +69,14 @@ export function getSession(): Session {
   return driver.session()
 }
 
-/**
- * Execute a query with automatic retry logic for transient failures
- */
-export async function executeQuery<T>(
-  query: string,
-  params?: Record<string, unknown>
-): Promise<T[]> {
-  const session = getSession()
-
-  try {
-    return await retryWithBackoff(async () => {
-      const result = await session.run(query, params)
-      return result.records.map((record) => record.toObject()) as T[]
-    })
-  } finally {
-    await session.close()
-  }
-}
-
 export async function closeDriver(): Promise<void> {
   if (driver) {
     try {
       await driver.close()
     } catch (error) {
-      console.error('Error closing driver:', error)
+      console.error('[Neo4j] Error closing driver:', error)
     }
     driver = null
+    isInitialized = false
   }
 }
