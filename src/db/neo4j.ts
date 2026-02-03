@@ -65,7 +65,6 @@ export async function initializeDB(): Promise<Driver> {
       // Create driver with improved connection settings
       driver = neo4j.driver(uri, neo4j.auth.basic(user, password), {
         maxConnectionPoolSize: 50,
-        minConnectionPoolSize: 5,
         connectionAcquisitionTimeout: 30000, // Increased from 10s to 30s
         maxTransactionRetryTime: 15000,
         connectionTimeout: 30000, // Add connection timeout
