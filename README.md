@@ -2,6 +2,17 @@
 
 A production-ready serverless authentication microservice built with Express.js, AWS Lambda, Neo4j, and TypeScript. Supports up to 10,000 concurrent users with email notifications and dual-environment deployment.
 
+## � Documentation
+
+**Complete documentation is in the [`docs/`](./docs) directory.**
+
+- **New to this project?** → Start with [Docs README](./docs/README.md)
+- **Setting up locally?** → [Getting Started](./docs/setup/GETTING_STARTED.md)
+- **Want to understand the architecture?** → [Architecture Overview](./docs/architecture/OVERVIEW.md)
+- **Need API reference?** → [API Endpoints](./docs/api/ENDPOINTS.md)
+- **Deploying to AWS?** → [Deployment Guide](./docs/setup/DEPLOYMENT.md)
+- **Running database migrations?** → [Database Migrations](./docs/guides/DATABASE_MIGRATIONS.md)
+
 ## 🚀 Features
 
 - **Express.js Framework**: Full Express.js routing with middleware chain
@@ -11,7 +22,7 @@ A production-ready serverless authentication microservice built with Express.js,
 - **Dual Environment**: Automatic main/dev branch deployment
 - **Production-Ready**: Error handling, request logging, CORS, validation
 - **Type Safety**: Full TypeScript implementation with strict mode
-- **Neo4j Database**: Graph database for user management
+- **Neo4j Database**: Graph database with dual-label structure (:Member:User)
 - **Security**: bcrypt + pepper, JWT tokens, Zod validation
 
 ## 📁 Project Structure

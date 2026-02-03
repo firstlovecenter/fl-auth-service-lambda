@@ -107,26 +107,3 @@ jobs:
                       Function: ${{ steps.target.outputs.FUNCTION_NAME }}
                       Commit: ${{ github.event.head_commit.message }}
                       Status: ${{ job.status }}
-
-            - name: Deploy Lambda function
-              run: |
-                  aws lambda update-function-code \
-                    --function-name fl-auth-service-lambda \
-                    --zip-file fileb://auth-lambda.zip
-
-            - name: Verify deployment
-              run: |
-                  echo "Lambda functions deployed successfully!"
-                  aws lambda list-functions \
-                    --query "Functions[?contains(FunctionName, 'fl-auth-service-lambda')].{Name:FunctionName,Runtime:Runtime,LastModified:LastModified}" \
-                    --output table
-
-            - name: Notify deployment status
-              if: always()
-              uses: rtCamp/action-slack-notify@v2
-              env:
-                  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-                  SLACK_CHANNEL: deployments
-                  SLACK_COLOR: ${{ job.status }}
-                  SLACK_TITLE: "🔐 FL Auth Service Lambda Deployment"
-                  SLACK_MESSAGE: "Commit: ${{ github.event.head_commit.message }} - Auth API deployed to AWS Lambda ${{ job.status }}"
