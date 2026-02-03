@@ -15,6 +15,7 @@ interface Secrets {
   NEO4J_URI: string
   NEO4J_USER: string
   NEO4J_PASSWORD: string
+  NEO4J_ENCRYPTED?: string
   NOTIFICATION_SECRET_KEY: string
   ENVIRONMENT: string
 }

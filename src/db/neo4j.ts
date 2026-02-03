@@ -4,16 +4,6 @@ import { getSecret } from '../utils/secrets'
 let driver: Driver | null = null
 let isInitialized = false
 
-const DEFAULT_NEO4J_CONFIG = {
-  maxConnectionPoolSize: 50,
-  connectionTimeout: 30000,
-  logging: {
-    level: 'info' as const,
-    logger: (level: string, message: string) =>
-      console.log(`[Neo4j ${level}] ${message}`),
-  },
-}
-
 export async function initializeDB(): Promise<Driver> {
   if (isInitialized && driver) {
     return driver
@@ -22,29 +12,68 @@ export async function initializeDB(): Promise<Driver> {
   console.log('[Neo4j] Starting database initialization')
 
   try {
-    let uri = await getSecret('NEO4J_URI')
+    const uri = await getSecret('NEO4J_URI')
     const user = await getSecret('NEO4J_USER')
     const password = await getSecret('NEO4J_PASSWORD')
 
-    // Handle encrypted connection if required
-    const isEncrypted = uri.includes('neo4j+s://')
+    // Get encryption setting from secrets (default to false for backward compatibility)
+    let isEncrypted = false
+    try {
+      const encrypted = await getSecret('NEO4J_ENCRYPTED')
+      isEncrypted = encrypted === 'true'
+    } catch {
+      // If not set, default to false
+      isEncrypted = false
+    }
+
     console.log(
       `[Neo4j] Connecting to ${uri.replace(/:\/\/.*@/, '://[REDACTED]@')} (encrypted: ${isEncrypted})`
     )
 
-    driver = neo4j.driver(
-      uri,
-      neo4j.auth.basic(user, password),
-      DEFAULT_NEO4J_CONFIG
-    )
+    // Configure driver options based on encryption setting
+    const driverConfig = isEncrypted
+      ? {
+          encrypted: 'ENCRYPTION_ON' as const,
+          trust: 'TRUST_ALL_CERTIFICATES' as const,
+          connectionTimeout: 30000,
+          maxConnectionPoolSize: 50,
+          logging: {
+            level: 'info' as const,
+            logger: (level: string, message: string) =>
+              console.log(`[Neo4j ${level}] ${message}`),
+          },
+        }
+      : {
+          connectionTimeout: 30000,
+          maxConnectionPoolSize: 50,
+          logging: {
+            level: 'info' as const,
+            logger: (level: string, message: string) =>
+              console.log(`[Neo4j ${level}] ${message}`),
+          },
+        }
+
+    driver = neo4j.driver(uri, neo4j.auth.basic(user, password), driverConfig)
 
     // Verify connection
     try {
       await driver.verifyConnectivity()
-      console.log('[Neo4j] Connection established successfully')
+      console.log('[Neo4j] Connection verified successfully')
+
+      // Test with a simple query to ensure full connectivity
+      const session = driver.session()
+      try {
+        const result = await session.run('RETURN 1 as test')
+        const testValue = result.records[0].get('test')
+        console.log('[Neo4j] ✅ Test query successful:', testValue)
+      } finally {
+        await session.close()
+      }
+
       isInitialized = true
+      return driver
     } catch (error) {
-      console.error('[Neo4j] Connection verification failed:', error)
+      console.error('[Neo4j] ❌ Connection verification failed:', error)
       await driver.close().catch((err) =>
         console.error('[Neo4j] Error closing failed driver:', err)
       )
@@ -52,8 +81,6 @@ export async function initializeDB(): Promise<Driver> {
       isInitialized = false
       throw error
     }
-
-    return driver
   } catch (error) {
     console.error('[Neo4j] Database initialization failed:', error)
     isInitialized = false
