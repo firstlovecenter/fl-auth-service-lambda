@@ -36,10 +36,7 @@ export const forgotPassword = asyncHandler(
   async (req: Request, res: Response) => {
     let session
     const startTime = Date.now()
-    const clientIP = getClientIP(
-      req.ip,
-      req.headers as Record<string, string>,
-    )
+    const clientIP = getClientIP(req.ip, req.headers as Record<string, string>)
 
     try {
       // Parse and validate input
@@ -144,7 +141,9 @@ export const forgotPassword = asyncHandler(
           logSecurityEvent('forgot_password_email_failed', {
             email,
             error:
-              emailError instanceof Error ? emailError.message : 'Unknown error',
+              emailError instanceof Error
+                ? emailError.message
+                : 'Unknown error',
             clientIP,
           })
           // User won't know if email failed - security by obscurity

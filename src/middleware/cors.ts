@@ -4,12 +4,18 @@ import { Request, Response, NextFunction } from 'express'
  * CORS middleware for Lambda
  * Allows requests from any origin (suitable for API Gateway)
  */
+const allowedOrigins = new Set(['http://localhost:3000'])
+
 export const corsMiddleware = (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
-  res.header('Access-Control-Allow-Origin', '*')
+  const origin = req.headers.origin
+  if (origin && allowedOrigins.has(origin)) {
+    res.header('Access-Control-Allow-Origin', origin)
+  }
+  res.header('Vary', 'Origin')
   res.header('Access-Control-Allow-Credentials', 'true')
   res.header(
     'Access-Control-Allow-Methods',
