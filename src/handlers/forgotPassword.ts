@@ -115,7 +115,7 @@ export const handler = async (
     session = getSession()
 
     const result = await session.run(
-      `MATCH (m:Member {email: $email})
+      `MATCH (m:User {email: $email})
        RETURN m.id as id, m.auth_id as auth_id, m.firstName as firstName`,
       { email },
     )
@@ -138,7 +138,7 @@ export const handler = async (
 
       try {
         // Generate reset token (24 hour validity)
-        const resetToken = signJWT(
+        const resetToken = await signJWT(
           {
             userId,
             email,

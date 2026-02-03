@@ -108,7 +108,7 @@ export const handler = async (
     try {
       // Update password and mark email as verified
       const updateResult = await tx.run(
-        `MATCH (u:Member {id: $userId, email: $email})
+        `MATCH (u:User {id: $userId, email: $email})
          SET u.password = $hashedPassword,
              u.email_verified = true,
              u.migration_completed = true,
@@ -128,7 +128,7 @@ export const handler = async (
 
       // Fetch user roles
       const rolesResult = await tx.run(
-        `MATCH (m:Member {id: $userId})
+        `MATCH (m:User {id: $userId})
          RETURN {
            leadsBacenta:        exists((m)-[:LEADS]->(:Bacenta)),
            leadsGovernorship:   exists((m)-[:LEADS]->(:Governorship)),
