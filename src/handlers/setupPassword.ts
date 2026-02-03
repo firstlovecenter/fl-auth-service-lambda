@@ -69,7 +69,7 @@ export const handler = async (
 
       // Update user password (only if password is null)
       const result = await tx.run(
-          `MATCH (u:User {id: $userId, email: $email})
+        `MATCH (u:User {id: $userId, email: $email})
          WHERE u.password IS NULL
          SET u.password = $hashedPassword,
              u.migration_completed = true,

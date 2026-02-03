@@ -16,8 +16,9 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
   let session
 
   try {
-    const { email, password, firstName, lastName } =
-      signupSchema.parse(req.body)
+    const { email, password, firstName, lastName } = signupSchema.parse(
+      req.body,
+    )
 
     session = getSession()
 
