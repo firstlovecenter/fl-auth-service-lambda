@@ -2,7 +2,7 @@ import { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSession } from '../db/neo4j'
 import { signJWT } from '../utils/auth'
-import { sendPasswordResetRequestEmail } from '../utils/notifications'
+import { sendPasswordSetupEmail } from '../utils/notifications'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
 import {
   checkRateLimit,
