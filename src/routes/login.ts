@@ -54,12 +54,11 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     session = getSession()
 
     const result = await session.run(
-      `MATCH (m:Member)
+      `MATCH (m:User)
        WHERE ($email IS NOT NULL AND m.email = $email)
           OR ($id IS NOT NULL AND m.id = $id)
-          OR ($auth_id IS NOT NULL AND m.auth_id = $auth_id)
        RETURN
-         m { .id, .auth_id, .firstName, .lastName, .email, .password } AS member,
+         m { .id, .firstName, .lastName, .email, .password } AS member,
          {
            leadsBacenta:        exists((m)-[:LEADS]->(:Bacenta)),
            leadsGovernorship:   exists((m)-[:LEADS]->(:Governorship)),
@@ -84,7 +83,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
            isSheepSeekerForStream:         exists((m)-[:IS_SHEEP_SEEKER_FOR]->(:Stream))
          } AS flags
        LIMIT 1`,
-      { email, id: null, auth_id: null },
+      { email, id: null },
     )
 
     if (result.records.length === 0) {
@@ -95,25 +94,21 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     const member = record.get('member')
     const flags = record.get('flags')
 
+    // Check if password is NULL (user needs to set up password)
+    if (member.password === null || member.password === undefined) {
+      throw new ApiError(
+        401,
+        "Password not set. Please use 'Forgot Password' to set up your password.",
+        { requiresPasswordSetup: true },
+      )
+    }
+
     const passwordMatch = await comparePassword(password, member.password)
     if (!passwordMatch) {
       throw new ApiError(401, 'Invalid email or password')
     }
 
     const roles = deriveRolesFromFlags(flags)
-
-    // Check if password needs to be set up
-    const setupTokenResult = await session.run(
-      `MATCH (m:Member {id: $userId})-[:HAS_TOKEN]->(token:SetupToken) RETURN token LIMIT 1`,
-      { userId: member.id },
-    )
-
-    if (setupTokenResult.records.length > 0) {
-      return res.status(202).json({
-        message: 'Password setup required',
-        setupRequired: true,
-      })
-    }
 
     // Generate tokens
     const accessToken = await signJWT(

@@ -377,13 +377,13 @@ Environment is determined by the `ENVIRONMENT` value in AWS Secrets Manager (`"p
 
 ## 🗄️ Database Schema
 
-Neo4j graph database with Member nodes:
+Neo4j graph database with dual-label nodes:
 
 ```cypher
-(:Member {
-  id: String (UUID),
+(:Member:User {
+  id: String (UUID) - Only one ID needed,
   email: String (unique, indexed),
-  password: String (bcrypt hashed),
+  password: String (bcrypt hashed, can be NULL for migrated users),
   firstName: String,
   lastName: String,
   createdAt: DateTime,
@@ -392,13 +392,51 @@ Neo4j graph database with Member nodes:
 })
 ```
 
+### Label Meanings
+
+- **`:Member`**: All users created through signup (legacy and new)
+- **`:User`**: Authenticated users with the new label system (post-migration)
+
+**After Migration**: All nodes have both labels. The `User` label is what auth routes query.
+
+### Properties
+
+| Property | Type | Description | Notes |
+|----------|------|-------------|-------|
+| `id` | UUID (String) | Unique user identifier | Only ID needed (no auth_id) |
+| `email` | String | User email address | Unique, indexed for fast lookup |
+| `password` | String (nullable) | bcrypt hashed password | NULL for users needing password setup |
+| `firstName` | String | User first name | Optional |
+| `lastName` | String | User last name | Optional |
+| `createdAt` | DateTime | Account creation timestamp | Set on signup |
+| `updatedAt` | DateTime | Last profile update | Updated on password change |
+| `lastLoginAt` | DateTime | Last successful login | Updated on login |
+
 ### Required Indexes
+
 ```cypher
 CREATE CONSTRAINT member_email_unique IF NOT EXISTS
 FOR (m:Member) REQUIRE m.email IS UNIQUE;
 
 CREATE INDEX member_id IF NOT EXISTS
 FOR (m:Member) ON (m.id);
+
+CREATE INDEX user_id IF NOT EXISTS
+FOR (u:User) ON (u.id);
+
+CREATE INDEX user_email IF NOT EXISTS
+FOR (u:User) ON (u.email);
+```
+
+### Migration Info
+
+After running the migration script:
+
+```cypher
+# All Members should have User label
+MATCH (m:Member)
+WHERE NOT m:User
+RETURN count(m)  -- Should return 0
 ```
 
 ## 🔧 Configuration

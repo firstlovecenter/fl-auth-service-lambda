@@ -39,7 +39,7 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response) =>
     try {
       // Fetch user email before deletion
       const userResult = await tx.run(
-        `MATCH (u:Member {id: $userId})
+        `MATCH (u:User {id: $userId})
          RETURN u.email as email`,
         { userId: decoded.userId },
       )
@@ -51,7 +51,7 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response) =>
       // Delete all related data (cascade delete)
       // This ensures referential integrity
       await tx.run(
-        `MATCH (u:Member {id: $userId})
+        `MATCH (u:User {id: $userId})
          DETACH DELETE u`,
         { userId: decoded.userId },
       )

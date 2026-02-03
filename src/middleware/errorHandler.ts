@@ -5,12 +5,16 @@ import { z } from 'zod'
  * Custom error class for API errors
  */
 export class ApiError extends Error {
+  public data?: Record<string, any>
+
   constructor(
     public statusCode: number,
     message: string,
+    data?: Record<string, any>,
   ) {
     super(message)
     this.name = 'ApiError'
+    this.data = data
     Object.setPrototypeOf(this, ApiError.prototype)
   }
 }
@@ -50,9 +54,17 @@ export const errorHandler = (
 
   // Custom API errors
   if (error instanceof ApiError) {
-    return res.status(error.statusCode).json({
+    const response: any = {
       error: error.message,
-    })
+      statusCode: error.statusCode,
+    }
+    
+    // Include additional data if present
+    if (error.data) {
+      Object.assign(response, error.data)
+    }
+    
+    return res.status(error.statusCode).json(response)
   }
 
   // JWT errors

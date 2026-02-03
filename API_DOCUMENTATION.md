@@ -174,6 +174,17 @@ Authenticate a user and receive JWT tokens.
 }
 ```
 
+- `401 Unauthorized`: Password not set (migrated user requiring password setup)
+```json
+{
+  "error": "Password not set. Please use 'Forgot Password' to set up your password before logging in.",
+  "statusCode": 401,
+  "requestId": "abc-123",
+  "requiresPasswordSetup": true
+}
+```
+**Note**: When `requiresPasswordSetup` is `true`, the frontend should direct the user to the password setup/reset flow instead of showing a generic "invalid credentials" error.
+
 **Side Effects**:
 - Updates `lastLoginAt` timestamp in database
 

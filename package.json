@@ -7,7 +7,8 @@
     "build": "tsc",
     "watch": "tsc -w",
     "start": "node dist/index.js",
-    "test": "jest"
+    "test": "jest",
+    "migrate:members-to-users": "ts-node src/scripts/migrate-members-to-users.ts"
   },
   "dependencies": {
     "@aws-sdk/client-lambda": "^3.500.0",
@@ -32,6 +33,7 @@
     "serverless-offline": "^13.3.0",
     "serverless-plugin-typescript": "^2.1.5",
     "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   }
 }

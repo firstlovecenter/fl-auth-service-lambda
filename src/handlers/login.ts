@@ -71,14 +71,13 @@ export const handler = async (
 
     session = getSession()
 
-    // Find user + roles (flexible lookup by email/id/auth_id)
+    // Find user + roles (lookup by email or id)
     const result = await session.run(
-      `MATCH (m:Member)
+      `MATCH (m:User)
        WHERE ($email IS NOT NULL AND m.email = $email)
           OR ($id IS NOT NULL AND m.id = $id)
-          OR ($auth_id IS NOT NULL AND m.auth_id = $auth_id)
        RETURN
-         m { .id, .auth_id, .firstName, .lastName, .email, .password } AS member,
+         m { .id, .firstName, .lastName, .email, .password } AS member,
          {
            // Leadership / Leads
            leadsBacenta:        exists((m)-[:LEADS]->(:Bacenta)),
@@ -112,7 +111,6 @@ export const handler = async (
       {
         email,
         id: null,
-        auth_id: null,
       },
     )
 
@@ -124,29 +122,12 @@ export const handler = async (
     const member = record.get('member')
     const roleFlags = record.get('roles') as Record<string, boolean>
 
-    // Legacy: no password set → setup flow
+    // Check if password is NULL (user needs to set up password)
     if (member.password == null) {
-      const setupToken = signJWT(
-        {
-          userId: member.id ?? member.auth_id,
-          email: member.email,
-          action: 'password_setup',
-        },
-        '15m',
-      )
-      return successResponse(
-        {
-          message: 'Password setup required',
-          action_required: 'setup_password',
-          setup_token: setupToken,
-          user: {
-            id: member.id,
-            email: member.email,
-            firstName: member.firstName,
-            lastName: member.lastName,
-          },
-        },
-        202,
+      return errorResponse(
+        "Password not set. Please use 'Forgot Password' to set up your password.",
+        401,
+        { requiresPasswordSetup: true },
       )
     }
 

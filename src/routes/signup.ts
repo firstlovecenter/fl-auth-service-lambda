@@ -21,9 +21,9 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
 
     session = getSession()
 
-    // Check if user already exists
+    // Check if user already exists (check both Member and User labels)
     const existingUser = await session.run(
-      `MATCH (u:Member {email: $email}) RETURN u LIMIT 1`,
+      `MATCH (u) WHERE u:Member OR u:User AND u.email = $email RETURN u LIMIT 1`,
       { email },
     )
 
@@ -34,9 +34,9 @@ export const signup = asyncHandler(async (req: Request, res: Response) => {
     // Hash password
     const hashedPassword = await hashPassword(password)
 
-    // Create user
+    // Create user with both Member and User labels
     const result = await session.run(
-      `CREATE (person:Member)
+      `CREATE (person:Member:User)
        SET person.id = randomUUID(),
            person.email = $email,
            person.password = $password,

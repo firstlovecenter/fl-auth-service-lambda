@@ -37,7 +37,7 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
 
     // Fetch user
     const userResult = await session.run(
-      `MATCH (u:Member {email: $email})
+      `MATCH (u:User {email: $email})
        RETURN u.id as id, u.password as password, u.email as email`,
       { email },
     )
@@ -60,7 +60,7 @@ export const resetPassword = asyncHandler(async (req: Request, res: Response) =>
     const hashedPassword = await hashPassword(newPassword)
 
     await session.run(
-      `MATCH (u:Member {id: $userId})
+      `MATCH (u:User {id: $userId})
        SET u.password = $password,
            u.updatedAt = datetime()
        RETURN u.id`,

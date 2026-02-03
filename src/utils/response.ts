@@ -24,7 +24,12 @@ export const successResponse = (
 
 export const errorResponse = (
   message: string,
-  statusCode: number = 400
+  statusCode: number = 400,
+  additionalData?: Record<string, any>
 ): APIGatewayProxyResult => {
-  return createResponse(statusCode, { error: message })
+  const body: any = { error: message, statusCode }
+  if (additionalData) {
+    Object.assign(body, additionalData)
+  }
+  return createResponse(statusCode, body)
 }

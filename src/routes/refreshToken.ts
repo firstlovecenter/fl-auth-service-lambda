@@ -20,7 +20,7 @@ export const refreshToken = asyncHandler(async (req: Request, res: Response) => 
     session = getSession()
 
     const result = await session.run(
-      `MATCH (u:Member {id: $userId}) 
+      `MATCH (u:User {id: $userId}) 
        RETURN u.id as id, u.email as email`,
       { userId: decoded.userId },
     )
