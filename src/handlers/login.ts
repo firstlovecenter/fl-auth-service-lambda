@@ -142,7 +142,7 @@ export const handler = async (
 
     // Update last login
     await session.run(
-      `MATCH (u:Member {id: $userId}) SET u.lastLoginAt = datetime()`,
+      `MATCH (u:User {id: $userId}) SET u.lastLoginAt = datetime()`,
       { userId: member.id },
     )
 
