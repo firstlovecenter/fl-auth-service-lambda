@@ -11,6 +11,7 @@ import { login } from './routes/login'
 import { verify } from './routes/verify'
 import { refreshToken } from './routes/refreshToken'
 import { setupPassword } from './routes/setupPassword'
+import { forgotPassword } from './routes/forgotPassword'
 import { resetPassword } from './routes/resetPassword'
 import { deleteAccount } from './routes/deleteAccount'
 
@@ -86,6 +87,14 @@ app.post('/auth/refresh-token', refreshToken)
  * Returns: { accessToken, refreshToken, user }
  */
 app.post('/auth/setup-password', setupPassword)
+
+/**
+ * POST /auth/forgot-password
+ * Request a password reset link
+ * Body: { email }
+ * Returns: { message } (always success to prevent enumeration)
+ */
+app.post('/auth/forgot-password', forgotPassword)
 
 /**
  * POST /auth/reset-password
