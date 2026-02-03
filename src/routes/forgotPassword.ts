@@ -2,7 +2,7 @@ import { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSession } from '../db/neo4j'
 import { signJWT } from '../utils/auth'
-import { sendPasswordResetEmail } from '../utils/email'
+import { sendPasswordResetRequestEmail } from '../utils/notifications'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
 import {
   checkRateLimit,
@@ -129,7 +129,7 @@ export const forgotPassword = asyncHandler(
           )
 
           // Send reset email
-          await sendPasswordResetEmail(email, resetToken, firstName)
+          await sendPasswordSetupEmail(email, resetToken, firstName)
 
           logSecurityEvent('forgot_password_email_sent', {
             email,

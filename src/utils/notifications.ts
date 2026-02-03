@@ -36,11 +36,11 @@ const lambdaClient = new LambdaClient({
  */
 const getNotificationLambdaName = async (): Promise<string> => {
   const environment = await getSecret('ENVIRONMENT')
-  
+
   if (environment === 'development') {
     return 'dev-flc-notify-service'
   }
-  
+
   return 'flc-notify-service'
 }
 
@@ -92,7 +92,7 @@ export const sendEmail = async (payload: EmailPayload): Promise<boolean> => {
     // Parse response
     if (response.Payload) {
       const result = JSON.parse(new TextDecoder().decode(response.Payload))
-      
+
       if (response.StatusCode === 200 && result.statusCode === 200) {
         console.log('Email sent successfully')
         return true
@@ -117,7 +117,7 @@ export const sendWelcomeEmail = async (
   firstName?: string,
 ): Promise<boolean> => {
   const name = firstName || 'there'
-  
+
   return sendEmail({
     from: 'no-reply@updates.firstlovecenter.com',
     to: email,
@@ -142,7 +142,7 @@ export const sendPasswordResetEmail = async (
   firstName?: string,
 ): Promise<boolean> => {
   const name = firstName || 'there'
-  
+
   return sendEmail({
     from: 'no-reply@updates.firstlovecenter.com',
     to: email,
@@ -169,7 +169,7 @@ export const sendPasswordSetupEmail = async (
 ): Promise<boolean> => {
   const name = firstName || 'there'
   const setupLink = `https://your-app-url.com/setup-password?token=${setupToken}` // Update with actual URL
-  
+
   return sendEmail({
     from: 'no-reply@updates.firstlovecenter.com',
     to: email,
@@ -197,7 +197,7 @@ export const sendAccountDeletionEmail = async (
   firstName?: string,
 ): Promise<boolean> => {
   const name = firstName || 'there'
-  
+
   return sendEmail({
     from: 'no-reply@updates.firstlovecenter.com',
     to: email,
@@ -212,5 +212,35 @@ export const sendAccountDeletionEmail = async (
       <p>Best regards,<br>First Love Center Team</p>
     `,
     text: `Hi ${name}, your First Love Center account has been permanently deleted as requested. If you did not request this, please contact support immediately.`,
+  })
+}
+
+/**
+ * Send forgot-password reset link email
+ */
+export const sendPasswordResetRequestEmail = async (
+  email: string,
+  resetToken: string,
+  firstName?: string,
+): Promise<boolean> => {
+  const name = firstName || 'there'
+  const resetLink = `https://your-app-url.com/reset-password?token=${resetToken}` // Update with actual URL
+
+  return sendEmail({
+    from: 'no-reply@updates.firstlovecenter.com',
+    to: email,
+    subject: 'Reset Your Password - First Love Center',
+    html: `
+      <h2>Reset Your Password</h2>
+      <p>Hi ${name},</p>
+      <p>We received a request to reset your password. Click the link below to set a new password:</p>
+      <p><a href="${resetLink}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">Reset Password</a></p>
+      <p>Or copy and paste this link into your browser:</p>
+      <p style="word-break: break-all;">${resetLink}</p>
+      <p>This link will expire in 24 hours.</p>
+      <br>
+      <p>Best regards,<br>First Love Center Team</p>
+    `,
+    text: `Hi ${name}, reset your password using this link: ${resetLink}`,
   })
 }
