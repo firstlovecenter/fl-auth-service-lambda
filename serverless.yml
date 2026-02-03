@@ -29,66 +29,14 @@ provider:
       - ${env:SUBNET_ID_2}
 
 functions:
-  signup:
-    handler: src/handlers/signup.handler
+  api:
+    handler: src/index.handler
     events:
       - http:
-          path: auth/signup
-          method: post
+          path: /{proxy+}
+          method: ANY
           cors: true
-
-  login:
-    handler: src/handlers/login.handler
-    events:
       - http:
-          path: auth/login
-          method: post
-          cors: true
-
-  setupPassword:
-    handler: src/handlers/setupPassword.handler
-    events:
-      - http:
-          path: auth/setup-password
-          method: post
-          cors: true
-
-  verify:
-    handler: src/handlers/verify.handler
-    events:
-      - http:
-          path: auth/verify
-          method: post
-          cors: true
-
-  refreshToken:
-    handler: src/handlers/refreshToken.handler
-    events:
-      - http:
-          path: auth/refresh
-          method: post
-          cors: true
-
-  forgotPassword:
-    handler: src/handlers/forgotPassword.handler
-    events:
-      - http:
-          path: auth/forgot-password
-          method: post
-          cors: true
-
-  resetPassword:
-    handler: src/handlers/resetPassword.handler
-    events:
-      - http:
-          path: auth/reset-password
-          method: post
-          cors: true
-
-  deleteAccount:
-    handler: src/handlers/deleteAccount.handler
-    events:
-      - http:
-          path: auth/delete-account
-          method: delete
+          path: /
+          method: ANY
           cors: true
