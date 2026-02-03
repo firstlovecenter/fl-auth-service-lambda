@@ -25,28 +25,48 @@ A production-ready serverless authentication microservice built with Express.js,
 - **Neo4j Database**: Graph database with dual-label structure (:Member:User)
 - **Security**: bcrypt + pepper, JWT tokens, Zod validation
 
+## ✅ Endpoints
+
+| Endpoint                | Method | Purpose                | Security                     |
+| ----------------------- | ------ | ---------------------- | ---------------------------- |
+| `/auth/signup`          | POST   | Register new user      | Email verification required  |
+| `/auth/login`           | POST   | Authenticate user      | No info leakage              |
+| `/auth/forgot-password` | POST   | Request password reset | Silent failure, rate limited |
+| `/auth/reset-password`  | POST   | Set new password       | Token validation             |
+| `/auth/verify`          | POST   | Verify email           | Completion flag              |
+| `/auth/refresh-token`   | POST   | Get new access token   | Standard JWT                 |
+
 ## 📁 Project Structure
 
-
+```
 fl-auth-lambda/
 ├── src/
 │   ├── index.ts                    # Lambda entry point with serverless-http
 │   ├── app.ts                      # Express app with routes & middleware
+│   ├── handlers/
+│   │   ├── signup.ts               # User registration
+│   │   ├── login.ts                # User authentication
+│   │   ├── forgotPassword.ts       # Password recovery request
+│   │   ├── resetPassword.ts        # Password reset with token
+│   │   ├── verify.ts               # Email verification
+│   │   └── refreshToken.ts         # Token refresh
 │   ├── middleware/
 │   │   ├── errorHandler.ts         # Global error handling
 │   │   ├── requestLogger.ts        # Request ID tracking & logging
 │   │   ├── bodyParser.ts           # JSON parsing & validation
 │   │   └── cors.ts                 # CORS configuration
 │   ├── routes/
-│   │   ├── signup.ts               # User registration + welcome email
-│   │   ├── login.ts                # User authentication
-│   │   ├── verify.ts               # Token verification
-│   │   ├── refreshToken.ts         # Token refresh
-│   │   ├── setupPassword.ts        # First-time password setup
-│   │   ├── resetPassword.ts        # Password change + confirmation email
-│   │   └── deleteAccount.ts        # Account deletion + confirmation email
+│   │   ├── signup.ts               # Express route definitions
+│   │   ├── login.ts
+│   │   ├── verify.ts
+│   │   ├── refreshToken.ts
+│   │   ├── setupPassword.ts
+│   │   ├── resetPassword.ts
+│   │   └── deleteAccount.ts
 │   ├── utils/
 │   │   ├── auth.ts                 # Async JWT & password utilities
+│   │   ├── security.ts             # Rate limiting, timing utilities
+│   │   ├── email.ts                # Email service
 │   │   ├── secrets.ts              # AWS Secrets Manager integration
 │   │   ├── notifications.ts        # Email service integration
 │   │   ├── response.ts             # Lambda response helpers
@@ -256,13 +276,17 @@ Content-Type: application/json
 ```
 
 **Response** (always 200):
+
 ```json
-{ "message": "If an account exists with this email, you'll receive a reset link shortly" }
+{
+  "message": "If an account exists with this email, you'll receive a reset link shortly"
+}
 ```
 
 **What Happens**:
+
 1. ✅ Rate limit check (email): 3 per hour
-2. ✅ Rate limit check (IP): 10 per hour  
+2. ✅ Rate limit check (IP): 10 per hour
 3. ✅ Timing-safe delay: 150-300ms (masks database lookup)
 4. ✅ If email exists: Send reset email (silent to client)
 5. ✅ If email doesn't exist: Log only, no email sent (silent to client)
@@ -649,6 +673,7 @@ For issues or questions:
 ### Rate Limiting
 
 **In-Memory Store** (current):
+
 - 3 attempts per email per hour
 - 10 attempts per IP per hour
 - Exponential backoff on limit hit
@@ -659,15 +684,17 @@ For issues or questions:
 
 ```typescript
 // All forgot-password requests delayed by random amount
-await constantTimeDelay(150, 300); // 150-300ms random
+await constantTimeDelay(150, 300) // 150-300ms random
 ```
 
 **Why**: Prevents timing attacks that distinguish between:
+
 - "Email not found" (fast) vs "Email found" (slow)
 
 ### Audit Logging
 
 Every security event logged to CloudWatch:
+
 ```
 {
   "event": "forgot_password_attempt",
@@ -772,11 +799,13 @@ SECURITY PROPERTIES:
 ### New Files
 
 **`src/handlers/forgotPassword.ts`** (200 lines)
+
 - Entry point: `handler(event: APIGatewayProxyEvent)`
 - Validation → Rate limit → Timing delay → DB lookup → Email send
 - Silent failure pattern
 
 **`src/utils/security.ts`** (150 lines)
+
 - `checkRateLimit()` - Exponential backoff
 - `constantTimeDelay()` - Random timing
 - `getClientIP()` - Proxy-aware IP extraction
@@ -785,15 +814,18 @@ SECURITY PROPERTIES:
 ### Modified Files
 
 **`src/handlers/login.ts`**
+
 - Removed: Special "setup password" response
 - Changed: Null password → "Invalid email or password" (same as wrong password)
 - Effect: No user enumeration possible
 
 **`src/types/index.ts`**
+
 - Added: `ForgotPasswordRequest` interface
 - Added: Optional fields to User type (`email_verified`, `migration_completed`)
 
 **`serverless.yml`**
+
 - Added: `FROM_EMAIL` environment variable
 - Added: `APP_URL` environment variable
 - Added: `forgotPassword` function mapping
@@ -849,12 +881,12 @@ response_time_p50/p95/p99      # Latency percentiles
 
 ### Alert Thresholds
 
-| Alert | Threshold | Action |
-|-------|-----------|--------|
-| High | > 100 rate limits/hour | Possible enumeration attack |
-| Medium | > 5% email failures | Email service issue |
-| Medium | Response time > 500ms | Performance degradation |
-| Low | Unusual IP patterns | Distributed attack forming |
+| Alert  | Threshold              | Action                      |
+| ------ | ---------------------- | --------------------------- |
+| High   | > 100 rate limits/hour | Possible enumeration attack |
+| Medium | > 5% email failures    | Email service issue         |
+| Medium | Response time > 500ms  | Performance degradation     |
+| Low    | Unusual IP patterns    | Distributed attack forming  |
 
 ### CloudWatch Logs Query
 
@@ -876,12 +908,14 @@ const handleSubmit = async (email: string) => {
   const response = await fetch('/api/forgot-password', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email })
-  });
+    body: JSON.stringify({ email }),
+  })
 
   // Always show same message (never tell if email exists)
-  showMessage('If an account exists with this email, you will receive a reset link');
-};
+  showMessage(
+    'If an account exists with this email, you will receive a reset link',
+  )
+}
 ```
 
 ### Reset Password Page
@@ -892,17 +926,17 @@ const handleReset = async (token: string, newPassword: string) => {
   const response = await fetch('/api/reset-password', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ reset_token: token, password: newPassword })
-  });
+    body: JSON.stringify({ reset_token: token, password: newPassword }),
+  })
 
   if (response.ok) {
     // Login successful, redirect to dashboard
-    redirect('/dashboard');
+    redirect('/dashboard')
   } else {
     // Invalid/expired token
-    showError('Reset link invalid or expired');
+    showError('Reset link invalid or expired')
   }
-};
+}
 ```
 
 ---
@@ -957,18 +991,21 @@ Check:
 ## API Reference
 
 ### POST /auth/signup
+
 ```
 Request:  { "email": "user@example.com", "password": "..." }
 Response: { "message": "Signup successful, verify email" }
 ```
 
 ### POST /auth/login
+
 ```
 Request:  { "email": "user@example.com", "password": "..." }
 Response: { "accessToken": "...", "refreshToken": "..." }
 ```
 
 ### POST /auth/forgot-password ⭐
+
 ```
 Request:  { "email": "user@example.com" }
 Response: { "message": "If an account exists..." }
@@ -976,18 +1013,21 @@ Rate Limit: 3 per hour per email, 10 per hour per IP
 ```
 
 ### POST /auth/reset-password
+
 ```
 Request:  { "reset_token": "...", "password": "..." }
 Response: { "accessToken": "...", "refreshToken": "..." }
 ```
 
 ### POST /auth/verify
+
 ```
 Request:  { "verification_token": "..." }
 Response: { "message": "Email verified" }
 ```
 
 ### POST /auth/refresh-token
+
 ```
 Request:  { "refreshToken": "..." }
 Response: { "accessToken": "..." }
@@ -1034,17 +1074,20 @@ Time to Deploy:       30 minutes (code + config)
 ## Compliance & Standards
 
 ✅ **OWASP Top 10**
+
 - A01: Broken Access Control (JWT tokens)
 - A03: Injection (Zod validation)
 - A04: Insecure Design (silent failures prevent enumeration)
 - A07: Cross-Site Scripting (N/A - API only)
 
 ✅ **NIST Guidelines**
+
 - Password storage (bcrypt + pepper)
 - Account recovery (email verification)
 - Rate limiting (prevent brute force)
 
 ✅ **Industry Standards**
+
 - OAuth 2.0 (JWT tokens)
 - Email verification (standard practice)
 - Timing-safe operations (prevents timing attacks)
