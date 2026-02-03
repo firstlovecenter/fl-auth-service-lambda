@@ -63,7 +63,10 @@ export const sendEmail = async (payload: EmailPayload): Promise<boolean> => {
     const secretKey = await getNotificationSecretKey()
 
     console.log('[Notification] Lambda name:', lambdaName)
-    console.log('[Notification] Secret key (first 10 chars):', secretKey.substring(0, 10) + '...')
+    console.log(
+      '[Notification] Secret key (first 10 chars):',
+      secretKey.substring(0, 10) + '...',
+    )
 
     // Construct the notification event
     const event: NotificationEvent = {
@@ -99,7 +102,10 @@ export const sendEmail = async (payload: EmailPayload): Promise<boolean> => {
     if (response.Payload) {
       const result = JSON.parse(new TextDecoder().decode(response.Payload))
 
-      console.log('[Notification] Response payload:', JSON.stringify(result, null, 2))
+      console.log(
+        '[Notification] Response payload:',
+        JSON.stringify(result, null, 2),
+      )
 
       if (response.StatusCode === 200 && result.statusCode === 200) {
         console.log('[Notification] Email sent successfully')
