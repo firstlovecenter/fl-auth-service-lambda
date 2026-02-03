@@ -44,9 +44,9 @@ export const handler = async (
     // Hash password
     const hashedPassword = await hashPassword(password)
 
-        // Create user
-        const result = await session.run(
-          `CREATE (person:User)
+    // Create user
+    const result = await session.run(
+      `CREATE (person:User)
        SET person.id = randomUUID(),
            person.email = $email,
            person.password = $password,
