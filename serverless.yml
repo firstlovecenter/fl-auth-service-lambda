@@ -68,3 +68,27 @@ functions:
           path: auth/refresh
           method: post
           cors: true
+
+  forgotPassword:
+    handler: src/handlers/forgotPassword.handler
+    events:
+      - http:
+          path: auth/forgot-password
+          method: post
+          cors: true
+
+  resetPassword:
+    handler: src/handlers/resetPassword.handler
+    events:
+      - http:
+          path: auth/reset-password
+          method: post
+          cors: true
+
+  deleteAccount:
+    handler: src/handlers/deleteAccount.handler
+    events:
+      - http:
+          path: auth/delete-account
+          method: delete
+          cors: true
