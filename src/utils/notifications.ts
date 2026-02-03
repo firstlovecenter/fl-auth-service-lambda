@@ -62,6 +62,9 @@ export const sendEmail = async (payload: EmailPayload): Promise<boolean> => {
     const lambdaName = await getNotificationLambdaName()
     const secretKey = await getNotificationSecretKey()
 
+    console.log('[Notification] Lambda name:', lambdaName)
+    console.log('[Notification] Secret key (first 10 chars):', secretKey.substring(0, 10) + '...')
+
     // Construct the notification event
     const event: NotificationEvent = {
       resource: '/send-email',
@@ -75,7 +78,7 @@ export const sendEmail = async (payload: EmailPayload): Promise<boolean> => {
       isBase64Encoded: false,
     }
 
-    console.log(`Sending email via ${lambdaName}:`, {
+    console.log('[Notification] Sending email via', lambdaName, {
       to: payload.to,
       subject: payload.subject,
     })
@@ -89,22 +92,28 @@ export const sendEmail = async (payload: EmailPayload): Promise<boolean> => {
 
     const response = await lambdaClient.send(command)
 
+    console.log('[Notification] Lambda response status:', response.StatusCode)
+    console.log('[Notification] Function error:', response.FunctionError)
+
     // Parse response
     if (response.Payload) {
       const result = JSON.parse(new TextDecoder().decode(response.Payload))
 
+      console.log('[Notification] Response payload:', JSON.stringify(result, null, 2))
+
       if (response.StatusCode === 200 && result.statusCode === 200) {
-        console.log('Email sent successfully')
+        console.log('[Notification] Email sent successfully')
         return true
       } else {
-        console.error('Email sending failed:', result)
+        console.error('[Notification] Email sending failed:', result)
         return false
       }
     }
 
+    console.warn('[Notification] No payload in response')
     return false
   } catch (error) {
-    console.error('Error sending email via notification service:', error)
+    console.error('[Notification] Error sending email:', error)
     return false
   }
 }
