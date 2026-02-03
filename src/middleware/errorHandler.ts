@@ -79,6 +79,29 @@ export const errorHandler = (
         error: 'Invalid or expired token',
       })
     }
+
+    // Database connection errors (retriable)
+    if (
+      error.message &&
+      (error.message.includes('ServiceUnavailable') ||
+        error.message.includes('Connection was closed') ||
+        error.message.includes('ECONNREFUSED') ||
+        error.message.includes('ETIMEDOUT') ||
+        error.message.includes('unavailable'))
+    ) {
+      return res.status(503).json({
+        error: 'Database service temporarily unavailable',
+        requestId,
+      })
+    }
+
+    // Database not initialized
+    if (error.message.includes('Database not initialized')) {
+      return res.status(503).json({
+        error: 'Service initializing, please retry',
+        requestId,
+      })
+    }
   }
 
   // Default error
