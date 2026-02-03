@@ -122,13 +122,10 @@ export const handler = async (
     const member = record.get('member')
     const roleFlags = record.get('roles') as Record<string, boolean>
 
-    // Check if password is NULL (user needs to set up password)
+    // Password is required - if not set, treat as invalid credentials
+    // (do not leak information about user state)
     if (member.password == null) {
-      return errorResponse(
-        "Password not set. Please use 'Forgot Password' to set up your password.",
-        401,
-        { requiresPasswordSetup: true },
-      )
+      return errorResponse('Invalid email or password', 401)
     }
 
     // Verify password

@@ -4,6 +4,8 @@ export interface User {
   password: string
   firstName?: string
   lastName?: string
+  email_verified?: boolean
+  migration_completed?: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -33,4 +35,14 @@ export interface VerifyRequest {
 
 export interface RefreshTokenRequest {
   refreshToken: string
+}
+
+export interface ResetPasswordRequest {
+  reset_token: string
+  new_password: string
+  confirm_password: string
+}
+
+export interface ForgotPasswordRequest {
+  email: string
 }

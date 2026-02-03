@@ -21,6 +21,8 @@ provider:
     NEO4J_ENCRYPTED: ${env:NEO4J_ENCRYPTED, 'false'}
     JWT_SECRET: ${env:JWT_SECRET}
     PEPPER: ${env:PEPPER}
+    FROM_EMAIL: ${env:FROM_EMAIL}
+    APP_URL: ${env:APP_URL}
   vpc:
     securityGroupIds:
       - ${env:SECURITY_GROUP_ID}
@@ -50,6 +52,22 @@ functions:
     events:
       - http:
           path: auth/setup-password
+          method: post
+          cors: true
+
+  forgotPassword:
+    handler: src/handlers/forgotPassword.handler
+    events:
+      - http:
+          path: auth/forgot-password
+          method: post
+          cors: true
+
+  resetPassword:
+    handler: src/handlers/resetPassword.handler
+    events:
+      - http:
+          path: auth/reset-password
           method: post
           cors: true
 

@@ -8,8 +8,8 @@ import { parseError, parseRequestBody } from '../utils/validation'
 const signupSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
+  firstName: z.string(),
+  lastName: z.string(),
 })
 
 export const handler = async (
@@ -44,8 +44,8 @@ export const handler = async (
     // Hash password
     const hashedPassword = await hashPassword(password)
 
-    // Create user with both Member and User labels
-    const result = await session.run(
+        // Create user with both Member and User labels
+        const result = await session.run(
       `CREATE (person:Member:User)
        SET person.id = randomUUID(),
            person.email = $email,
