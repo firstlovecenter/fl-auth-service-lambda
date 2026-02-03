@@ -19,7 +19,14 @@ export const sendEmail = async ({
   textBody,
 }: SendEmailParams): Promise<void> => {
   try {
-    await SES.sendEmail({
+    console.log('[SES] sendEmail request', {
+      to,
+      subject,
+      from: FROM_EMAIL,
+      region: 'us-east-1',
+    })
+
+    const result = await SES.sendEmail({
       Source: FROM_EMAIL,
       Destination: {
         ToAddresses: [to],
@@ -41,8 +48,18 @@ export const sendEmail = async ({
         },
       },
     }).promise()
-  } catch (error) {
-    console.error('Failed to send email:', error)
+
+    console.log('[SES] sendEmail success', {
+      messageId: result.MessageId,
+      requestId: (result as any).ResponseMetadata?.RequestId,
+    })
+  } catch (error: any) {
+    console.error('[SES] sendEmail failed', {
+      message: error?.message,
+      code: error?.code,
+      statusCode: error?.statusCode,
+      requestId: error?.requestId,
+    })
     throw error
   }
 }
