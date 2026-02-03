@@ -9,9 +9,15 @@ export async function initializeDB(): Promise<Driver> {
   }
 
   try {
-    const uri = await getSecret('NEO4J_URI')
+    let uri = await getSecret('NEO4J_URI')
     const user = await getSecret('NEO4J_USER')
     const password = await getSecret('NEO4J_PASSWORD')
+
+    // Convert neo4j:// to bolt:// to use direct connection instead of cluster routing
+    // This prevents "No routing servers available" errors on single instances
+    if (uri.startsWith('neo4j://')) {
+      uri = uri.replace('neo4j://', 'bolt://')
+    }
 
     console.log('Connecting to Neo4j at:', uri)
 
