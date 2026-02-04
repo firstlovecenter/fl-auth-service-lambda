@@ -58,7 +58,13 @@ export const loadSecrets = async (): Promise<Secrets> => {
     secretsCache = JSON.parse(response.SecretString) as Secrets
 
     // Validate that all required secrets are present
-    const requiredSecrets = ['JWT_SECRET', 'PEPPER', 'NEO4J_URI', 'NEO4J_USER', 'NEO4J_PASSWORD']
+    const requiredSecrets = [
+      'JWT_SECRET',
+      'PEPPER',
+      'NEO4J_URI',
+      'NEO4J_USER',
+      'NEO4J_PASSWORD',
+    ]
     for (const secret of requiredSecrets) {
       if (!secretsCache[secret as keyof Secrets]) {
         throw new Error(`Missing required secret: ${secret}`)
@@ -70,7 +76,7 @@ export const loadSecrets = async (): Promise<Secrets> => {
   } catch (error) {
     console.error(
       'Failed to load secrets from AWS Secrets Manager:',
-      error instanceof Error ? error.message : String(error)
+      error instanceof Error ? error.message : String(error),
     )
     throw error
   }
