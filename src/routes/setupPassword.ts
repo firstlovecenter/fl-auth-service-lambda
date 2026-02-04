@@ -1,7 +1,12 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
 import { initializeDB, getSession } from '../db/neo4j'
-import { hashPassword, verifyJWT, signJWT, signRefreshToken } from '../utils/auth'
+import {
+  hashPassword,
+  verifyJWT,
+  signJWT,
+  signRefreshToken,
+} from '../utils/auth'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
 
 const setupPasswordSchema = z.object({
@@ -10,60 +15,70 @@ const setupPasswordSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 
-export const setupPassword = asyncHandler(async (req: Request, res: Response) => {
-  let session
+export const setupPassword = asyncHandler(
+  async (req: Request, res: Response) => {
+    let session
 
-  try {
-    await initializeDB()
-
-    const { email, token, password } =
-      setupPasswordSchema.parse(req.body)
-
-    let decoded: any
     try {
-      decoded = await verifyJWT(token)
-    } catch (error) {
-      throw new ApiError(
-        401,
-        'Invalid or expired setup link. Please try logging in again.',
-      )
-    }
+      await initializeDB()
 
-    const { userId } = decoded
+      const { email, token, password } = setupPasswordSchema.parse(req.body)
 
-    session = getSession()
+      let decoded: any
+      try {
+        decoded = await verifyJWT(token)
+      } catch (error) {
+        console.log(
+          JSON.stringify({
+            timestamp: new Date().toISOString(),
+            level: 'ERROR',
+            message: 'JWT verification failed',
+            error: error instanceof Error ? error.message : String(error),
+            token: token.substring(0, 20) + '...', // Log first 20 chars for debugging
+          }),
+        )
+        throw new ApiError(
+          401,
+          'Invalid or expired setup link. Please try logging in again.',
+        )
+      }
 
-    const hashedPassword = await hashPassword(password)
+      const { userId } = decoded
 
-    const result = await session.run(
-      `MATCH (u:User {id: $userId, email: $email})
+      session = getSession()
+
+      const hashedPassword = await hashPassword(password)
+
+      const result = await session.run(
+        `MATCH (u:User {id: $userId, email: $email})
        WHERE u.password IS NULL
        SET u.password = $hashedPassword,
            u.updatedAt = datetime()
        RETURN u.id as id, u.email as email, u.firstName as firstName, u.lastName as lastName`,
-      {
-        userId,
-        email,
-        hashedPassword,
-      },
-    )
+        {
+          userId,
+          email,
+          hashedPassword,
+        },
+      )
 
-    if (result.records.length === 0) {
-      throw new ApiError(404, 'User not found or password already set')
+      if (result.records.length === 0) {
+        throw new ApiError(404, 'User not found or password already set')
+      }
+
+      const record = result.records[0]
+
+      res.status(200).json({
+        message: 'Password set up successfully',
+        user: {
+          id: record.get('id'),
+          email: record.get('email'),
+        },
+      })
+    } finally {
+      if (session) {
+        await session.close()
+      }
     }
-
-    const record = result.records[0]
-
-    res.status(200).json({
-      message: 'Password set up successfully',
-      user: {
-        id: record.get('id'),
-        email: record.get('email'),
-      },
-    })
-  } finally {
-    if (session) {
-      await session.close()
-    }
-  }
-})
+  },
+)
