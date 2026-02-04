@@ -22,7 +22,14 @@ const getJWTSecret = async (): Promise<string> => {
       .createHash('sha256')
       .update(cachedJWTSecret)
       .digest('hex')
-    console.log('[Auth] JWT_SECRET hash:', digest)
+    console.log(
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'INFO',
+        message: 'JWT_SECRET loaded',
+        secretHash: digest,
+      })
+    )
   }
   return cachedJWTSecret
 }
