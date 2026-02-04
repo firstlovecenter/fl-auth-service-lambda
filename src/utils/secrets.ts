@@ -18,6 +18,7 @@ interface Secrets {
   NEO4J_ENCRYPTED?: string
   NOTIFICATION_SECRET_KEY: string
   ENVIRONMENT: string
+  FLC_NOTIFY_KEY: string
 }
 
 let secretsCache: Secrets | null = null
