@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
-import { getSession } from '../db/neo4j'
+import { getSession, initializeDB } from '../db/neo4j'
 import { signJWT } from '../utils/auth'
 import { sendPasswordSetupEmail } from '../utils/notifications'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
@@ -93,6 +93,7 @@ export const forgotPassword = asyncHandler(
       // USER LOOKUP: Check if email exists (but don't reveal result)
       // ========================================================================
 
+      await initializeDB()
       session = getSession()
 
       const result = await session.run(
