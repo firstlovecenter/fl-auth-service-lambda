@@ -28,7 +28,7 @@ const getJWTSecret = async (): Promise<string> => {
         level: 'INFO',
         message: 'JWT_SECRET loaded',
         secretHash: digest,
-      })
+      }),
     )
   }
   return cachedJWTSecret
