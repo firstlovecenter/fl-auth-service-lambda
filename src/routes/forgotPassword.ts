@@ -138,18 +138,32 @@ export const forgotPassword = asyncHandler(
           })
 
           // Send reset email
-          await sendPasswordSetupEmail(email, resetToken, firstName)
-
-          logSecurityEvent('forgot_password_email_sent', {
+          const emailSent = await sendPasswordSetupEmail(
             email,
-            userId,
-            clientIP,
-          })
+            resetToken,
+            firstName,
+          )
+
+          if (emailSent) {
+            logSecurityEvent('forgot_password_email_sent', {
+              email,
+              userId,
+              clientIP,
+            })
+          } else {
+            logSecurityEvent('forgot_password_email_failed', {
+              email,
+              userId,
+              error: 'sendPasswordSetupEmail returned false',
+              clientIP,
+            })
+          }
         } catch (emailError) {
           // Log email failure but still return success to user
           console.error('[ForgotPassword] Email send error:', emailError)
           logSecurityEvent('forgot_password_email_failed', {
             email,
+            userId,
             error:
               emailError instanceof Error
                 ? emailError.message
