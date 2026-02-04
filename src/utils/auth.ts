@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
 import type { SignOptions, JwtPayload } from 'jsonwebtoken'
 import { getSecret } from './secrets'
 
@@ -17,6 +18,11 @@ let cachedPepper: string | null = null
 const getJWTSecret = async (): Promise<string> => {
   if (!cachedJWTSecret) {
     cachedJWTSecret = await getSecret('JWT_SECRET')
+    const digest = crypto
+      .createHash('sha256')
+      .update(cachedJWTSecret)
+      .digest('hex')
+    console.log('[Auth] JWT_SECRET hash:', digest)
   }
   return cachedJWTSecret
 }
@@ -63,7 +69,9 @@ export const signJWT = async (
   return jwt.sign(payload, secret, { expiresIn } as any)
 }
 
-export const signRefreshToken = async (payload: Record<string, unknown>): Promise<string> => {
+export const signRefreshToken = async (
+  payload: Record<string, unknown>,
+): Promise<string> => {
   const secret = await getJWTSecret()
   return jwt.sign(payload, secret, { expiresIn: '7d' })
 }
