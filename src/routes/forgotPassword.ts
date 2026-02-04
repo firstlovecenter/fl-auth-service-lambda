@@ -128,6 +128,14 @@ export const forgotPassword = asyncHandler(
             '24h',
           )
 
+          console.log('[ForgotPassword] Reset token generated:', {
+            email,
+            userId,
+            token: resetToken,
+            expiresIn: '24h',
+            timestamp: new Date().toISOString(),
+          })
+
           // Send reset email
           await sendPasswordSetupEmail(email, resetToken, firstName)
 
@@ -138,6 +146,7 @@ export const forgotPassword = asyncHandler(
           })
         } catch (emailError) {
           // Log email failure but still return success to user
+          console.error('[ForgotPassword] Email send error:', emailError)
           logSecurityEvent('forgot_password_email_failed', {
             email,
             error:
