@@ -49,7 +49,9 @@ const getNotificationLambdaName = async (): Promise<string> => {
  * Loaded from AWS Secrets Manager for security
  */
 const getNotificationSecretKey = async (): Promise<string> => {
-  return await getSecret('FLC_NOTIFY_KEY')
+  const key = await getSecret('FLC_NOTIFY_KEY')
+  console.log('[Notification] Using FLC_NOTIFY_KEY for authentication')
+  return key
 }
 
 /**
