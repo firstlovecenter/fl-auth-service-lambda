@@ -73,7 +73,10 @@ export const signJWT = async (
   expiresIn: string | number = '30m',
 ): Promise<string> => {
   const secret = await getJWTSecret()
-  return jwt.sign(payload, secret, { expiresIn } as any)
+  return jwt.sign(payload, secret, {
+    expiresIn,
+    algorithm: 'HS256', // Explicitly set algorithm
+  })
 }
 
 export const signRefreshToken = async (
@@ -86,7 +89,9 @@ export const signRefreshToken = async (
 export const verifyJWT = async (token: string): Promise<JwtPayload> => {
   try {
     const secret = await getJWTSecret()
-    const decoded = jwt.verify(token, secret)
+    const decoded = jwt.verify(token, secret, {
+      algorithms: ['HS256'], // Explicitly allow only HS256
+    })
 
     if (typeof decoded === 'string') {
       throw new Error('Unexpected string payload from JWT')
