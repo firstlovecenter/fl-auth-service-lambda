@@ -17,7 +17,16 @@ let cachedPepper: string | null = null
 
 const getJWTSecret = async (): Promise<string> => {
   if (!cachedJWTSecret) {
-    cachedJWTSecret = await getSecret('JWT_SECRET')
+    cachedJWTSecret = await getSecret('JWT_SECRET_HS256') // Changed here
+
+    if (!cachedJWTSecret || typeof cachedJWTSecret !== 'string') {
+      console.error('JWT_SECRET_HS256 is invalid:', {
+        type: typeof cachedJWTSecret,
+        value: cachedJWTSecret ? 'exists' : 'null/undefined',
+      })
+      throw new Error('JWT_SECRET_HS256 is not a valid string')
+    }
+
     const digest = crypto
       .createHash('sha256')
       .update(cachedJWTSecret)
@@ -26,8 +35,9 @@ const getJWTSecret = async (): Promise<string> => {
       JSON.stringify({
         timestamp: new Date().toISOString(),
         level: 'INFO',
-        message: 'JWT_SECRET loaded',
+        message: 'JWT_SECRET_HS256 loaded',
         secretHash: digest,
+        secretLength: cachedJWTSecret.length,
       }),
     )
   }

@@ -11,6 +11,7 @@ import {
 
 interface Secrets {
   JWT_SECRET: string
+  JWT_SECRET_HS256: string // Add this
   PEPPER: string
   NEO4J_URI: string
   NEO4J_USER: string
@@ -60,6 +61,7 @@ export const loadSecrets = async (): Promise<Secrets> => {
     // Validate that all required secrets are present
     const requiredSecrets = [
       'JWT_SECRET',
+      'JWT_SECRET_HS256',
       'PEPPER',
       'NEO4J_URI',
       'NEO4J_USER',
