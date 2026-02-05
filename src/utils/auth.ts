@@ -94,7 +94,15 @@ export const verifyJWT = async (token: string): Promise<JwtPayload> => {
 
     return decoded as JwtPayload
   } catch (error) {
-    // if (error instanceof jwt.TokenExpiredError) { ... }
+    console.log(
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        level: 'ERROR',
+        message: 'JWT verification error (raw)',
+        errorName: error instanceof Error ? error.name : 'Unknown',
+        errorMessage: error instanceof Error ? error.message : String(error),
+      }),
+    )
     throw new Error('Invalid or expired token')
   }
 }
