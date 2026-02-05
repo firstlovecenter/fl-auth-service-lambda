@@ -76,14 +76,14 @@ export const signJWT = async (
   return jwt.sign(payload, secret, {
     expiresIn,
     algorithm: 'HS256', // Explicitly set algorithm
-  })
+  } as any)
 }
 
 export const signRefreshToken = async (
   payload: Record<string, unknown>,
 ): Promise<string> => {
   const secret = await getJWTSecret()
-  return jwt.sign(payload, secret, { expiresIn: '7d' })
+  return jwt.sign(payload, secret, { expiresIn: '7d' } as any)
 }
 
 export const verifyJWT = async (token: string): Promise<JwtPayload> => {
