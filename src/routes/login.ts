@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
-import { initializeDB, getSession } from '../db/neo4j'
+import { getSession } from '../db/neo4j'
 import { comparePassword, signJWT, signRefreshToken } from '../utils/auth'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
 
@@ -47,8 +47,6 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   let session
 
   try {
-    await initializeDB()
-
     const { email, password } = loginSchema.parse(req.body)
 
     session = getSession()

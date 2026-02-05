@@ -4,6 +4,7 @@ import { requestIdMiddleware, requestLogger } from './middleware/requestLogger'
 import { jsonBodyParser, validateBody } from './middleware/bodyParser'
 import { errorHandler, asyncHandler } from './middleware/errorHandler'
 import { z } from 'zod'
+import { initializeDB } from './db/neo4j'
 
 // Route imports
 import { signup } from './routes/signup'
@@ -17,6 +18,16 @@ import { deleteAccount } from './routes/deleteAccount'
 
 // Initialize Express app
 const app = express()
+
+// Initialize DB only for auth routes (avoid /health)
+app.use('/auth', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await initializeDB()
+    next()
+  } catch (error) {
+    next(error)
+  }
+})
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Middleware Setup (Production-Ready)

@@ -1,12 +1,7 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
-import { initializeDB, getSession } from '../db/neo4j'
-import {
-  hashPassword,
-  verifyJWT,
-  signJWT,
-  signRefreshToken,
-} from '../utils/auth'
+import { getSession } from '../db/neo4j'
+import { hashPassword, verifyJWT } from '../utils/auth'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
 
 const setupPasswordSchema = z.object({
@@ -20,8 +15,6 @@ export const setupPassword = asyncHandler(
     let session
 
     try {
-      await initializeDB()
-
       const { email, token, password } = setupPasswordSchema.parse(req.body)
 
       let decoded: any
