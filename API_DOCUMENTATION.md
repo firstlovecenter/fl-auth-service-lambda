@@ -1,6 +1,6 @@
     # Authentication Service API Documentation
 
-    Version: 1.0  
+    Version: 1.0
     Last Updated: February 6, 2026
 
     ## Overview
@@ -91,7 +91,7 @@
     - `email` (required): Valid email address, must be unique
     - `password` (required): Minimum 8 characters
     - `firstName` (required): User's first name
-    - `lastName` (required): User's last name  
+    - `lastName` (required): User's last name
     - `whatsappNumber` (optional): WhatsApp number, must be unique if provided
 
     **Success Response (201):**
@@ -521,12 +521,12 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, firstName, lastName })
     });
-    
+
     if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error);
     }
-    
+
     const data = await response.json();
     // Store tokens
     localStorage.setItem('accessToken', data.accessToken);
@@ -541,12 +541,12 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
     });
-    
+
     if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error);
     }
-    
+
     const data = await response.json();
     localStorage.setItem('accessToken', data.accessToken);
     localStorage.setItem('refreshToken', data.refreshToken);
@@ -556,19 +556,19 @@
     // Refresh Token
     async function refreshAccessToken() {
     const refreshToken = localStorage.getItem('refreshToken');
-    
+
     const response = await fetch(`${API_BASE_URL}/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken })
     });
-    
+
     if (!response.ok) {
         // Refresh token expired, redirect to login
         window.location.href = '/login';
         return;
     }
-    
+
     const data = await response.json();
     localStorage.setItem('accessToken', data.accessToken);
     }
@@ -580,7 +580,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token })
     });
-    
+
     return response.ok;
     }
     ```
@@ -724,7 +724,7 @@
     // Implement automatic token refresh
     async function makeAuthenticatedRequest(url: string, options: RequestInit) {
     let token = localStorage.getItem('accessToken');
-    
+
     let response = await fetch(url, {
         ...options,
         headers: {
@@ -732,7 +732,7 @@
         'Authorization': `Bearer ${token}`
         }
     });
-    
+
     // If token expired, refresh and retry
     if (response.status === 401) {
         await refreshAccessToken();
@@ -745,7 +745,7 @@
         }
         });
     }
-    
+
     return response;
     }
     ```
