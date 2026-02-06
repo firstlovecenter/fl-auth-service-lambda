@@ -2,9 +2,13 @@ import { Request, Response, NextFunction } from 'express'
 
 /**
  * CORS middleware for Lambda
- * Allows requests from any origin (suitable for API Gateway)
+ * Allows requests from configured origins
  */
-const allowedOrigins = new Set(['http://localhost:3000'])
+const allowedOrigins = new Set([
+  'http://localhost:3000',
+  'https://dev.dti54uhzqmdg1.amplifyapp.com',
+  process.env.AMPLIFY_URL || '',
+].filter(Boolean))
 
 export const corsMiddleware = (
   req: Request,
