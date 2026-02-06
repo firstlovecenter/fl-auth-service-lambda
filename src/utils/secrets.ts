@@ -20,6 +20,7 @@ interface Secrets {
   NOTIFICATION_SECRET_KEY: string
   ENVIRONMENT: string
   FLC_NOTIFY_KEY: string
+  SYNAGO_APP_URL: string
 }
 
 let secretsCache: Secrets | null = null

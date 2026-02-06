@@ -177,7 +177,7 @@ export const sendPasswordResetEmail = async (
 }
 
 /**
- * Send password setup email for migrated users
+ * Send password setup email
  */
 export const sendPasswordSetupEmail = async (
   email: string,
@@ -185,7 +185,8 @@ export const sendPasswordSetupEmail = async (
   firstName?: string,
 ): Promise<boolean> => {
   const name = firstName || 'there'
-  const setupLink = `https://your-app-url.com/setup-password?token=${setupToken}` // Update with actual URL
+  const appUrl = await getSecret('SYNAGO_APP_URL')
+  const setupLink = `${appUrl}/setup-password?token=${setupToken}`
 
   return sendEmail({
     from: 'no-reply@updates.firstlovecenter.com',
@@ -194,7 +195,7 @@ export const sendPasswordSetupEmail = async (
     html: `
       <h2>Set Up Your Password</h2>
       <p>Hi ${name},</p>
-      <p>We've migrated your account to our new authentication system. Please set up your password to continue using your account.</p>
+      <p>Please set up your password to continue using your account.</p>
       <p><a href="${setupLink}" style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">Set Up Password</a></p>
       <p>Or copy and paste this link into your browser:</p>
       <p style="word-break: break-all;">${setupLink}</p>
@@ -202,7 +203,7 @@ export const sendPasswordSetupEmail = async (
       <br>
       <p>Best regards,<br>First Love Center Team</p>
     `,
-    text: `Hi ${name}, we've migrated your account to our new authentication system. Please set up your password using this link: ${setupLink}`,
+    text: `Hi ${name}, please set up your password using this link: ${setupLink}`,
   })
 }
 
@@ -241,7 +242,8 @@ export const sendPasswordResetRequestEmail = async (
   firstName?: string,
 ): Promise<boolean> => {
   const name = firstName || 'there'
-  const resetLink = `https://your-app-url.com/reset-password?token=${resetToken}` // Update with actual URL
+  const appUrl = await getSecret('SYNAGO_APP_URL')
+  const resetLink = `${appUrl}/reset-password?token=${resetToken}`
 
   return sendEmail({
     from: 'no-reply@updates.firstlovecenter.com',
