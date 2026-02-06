@@ -8,6 +8,7 @@ const allowedOrigins = new Set(
   [
     'http://localhost:3000',
     'https://dev.dti54uhzqmdg1.amplifyapp.com',
+    'https://dev-synago.firstlovecenter.com',
     process.env.AMPLIFY_URL || '',
   ].filter(Boolean),
 )
