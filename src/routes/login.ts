@@ -19,7 +19,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     session = getSession()
 
     const result = await session.run(
-      `MATCH (m:User)
+      `MATCH (m:User:Member)
        WHERE ($email IS NOT NULL AND m.email = $email)
           OR ($id IS NOT NULL AND m.id = $id)
        RETURN

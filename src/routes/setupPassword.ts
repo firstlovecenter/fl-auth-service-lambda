@@ -48,11 +48,11 @@ export const setupPassword = asyncHandler(
 
       const result = await session.run(
         isPasswordReset
-          ? `MATCH (u:User {id: $userId, email: $email})
+          ? `MATCH (u:User:Member {id: $userId, email: $email})
              SET u.password = $hashedPassword,
                  u.updatedAt = datetime()
              RETURN u.id as id, u.email as email, u.firstName as firstName, u.lastName as lastName`
-          : `MATCH (u:User {id: $userId, email: $email})
+          : `MATCH (u:User:Member {id: $userId, email: $email})
              WHERE u.password IS NULL
              SET u.password = $hashedPassword,
                  u.updatedAt = datetime()

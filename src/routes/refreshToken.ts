@@ -10,18 +10,19 @@ const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token is required'),
 })
 
-export const refreshToken = asyncHandler(async (req: Request, res: Response) => {
-  let session
+export const refreshToken = asyncHandler(
+  async (req: Request, res: Response) => {
+    let session
 
-  try {
-    const { refreshToken } = refreshTokenSchema.parse(req.body)
+    try {
+      const { refreshToken } = refreshTokenSchema.parse(req.body)
 
-    const decoded = (await verifyJWT(refreshToken)) as JWTPayload
+      const decoded = (await verifyJWT(refreshToken)) as JWTPayload
 
-    session = getSession()
+      session = getSession()
 
-    const result = await session.run(
-      `MATCH (m:User {id: $userId})
+      const result = await session.run(
+        `MATCH (m:User:Member {id: $userId})
        RETURN
          m { .id, .firstName, .lastName, .email } AS member,
          {
@@ -48,37 +49,38 @@ export const refreshToken = asyncHandler(async (req: Request, res: Response) => 
            isSheepSeekerForStream:         exists((m)-[:IS_SHEEP_SEEKER_FOR]->(:Stream))
          } AS flags
        LIMIT 1`,
-      { userId: decoded.userId },
-    )
+        { userId: decoded.userId },
+      )
 
-    if (result.records.length === 0) {
-      throw new ApiError(404, 'User not found')
+      if (result.records.length === 0) {
+        throw new ApiError(404, 'User not found')
+      }
+
+      const record = result.records[0]
+      const member = record.get('member')
+      const flags = record.get('flags')
+
+      const roles = deriveRolesFromFlags(flags)
+
+      const newAccessToken = await signJWT(
+        {
+          userId: member.id,
+          email: member.email,
+          firstName: member.firstName,
+          lastName: member.lastName,
+          [ROLES_CLAIM]: roles,
+        },
+        '30m',
+      )
+
+      res.status(200).json({
+        message: 'Token refreshed successfully',
+        accessToken: newAccessToken,
+      })
+    } finally {
+      if (session) {
+        await session.close()
+      }
     }
-
-    const record = result.records[0]
-    const member = record.get('member')
-    const flags = record.get('flags')
-
-    const roles = deriveRolesFromFlags(flags)
-
-    const newAccessToken = await signJWT(
-      {
-        userId: member.id,
-        email: member.email,
-        firstName: member.firstName,
-        lastName: member.lastName,
-        [ROLES_CLAIM]: roles,
-      },
-      '30m',
-    )
-
-    res.status(200).json({
-      message: 'Token refreshed successfully',
-      accessToken: newAccessToken,
-    })
-  } finally {
-    if (session) {
-      await session.close()
-    }
-  }
-})
+  },
+)
