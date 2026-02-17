@@ -96,7 +96,7 @@ export const forgotPassword = asyncHandler(
       session = getSession()
 
       const result = await session.run(
-        `MATCH (m:User {email: $email})
+        `MATCH (m:User:Member {email: $email})
          RETURN m.id as id, m.auth_id as auth_id, m.firstName as firstName`,
         { email },
       )
