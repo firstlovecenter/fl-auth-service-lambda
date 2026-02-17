@@ -3,45 +3,12 @@ import { z } from 'zod'
 import { getSession } from '../db/neo4j'
 import { comparePassword, signJWT, signRefreshToken } from '../utils/auth'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
+import { ROLES_CLAIM, deriveRolesFromFlags } from '../utils/roles'
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
 })
-
-const ROLES_CLAIM = 'roles'
-
-function deriveRolesFromFlags(flags: any): string[] {
-  const roles: string[] = []
-
-  if (flags.leadsBacenta) roles.push('leaderBacenta')
-  if (flags.leadsCampus) roles.push('leaderCampus')
-  if (flags.leadsCouncil) roles.push('leaderCouncil')
-  if (flags.leadsStream) roles.push('leaderStream')
-  if (flags.leadsGovernorship) roles.push('leaderGovernorship')
-  if (flags.leadsOversight) roles.push('leaderOversight')
-  if (flags.leadsDenomination) roles.push('leaderDenomination')
-
-  if (flags.isAdminForStream) roles.push('adminStream')
-  if (flags.isAdminForCampus) roles.push('adminCampus')
-  if (flags.isAdminForCouncil) roles.push('adminCouncil')
-  if (flags.isAdminForGovernorship) roles.push('adminGovernorship')
-  if (flags.isAdminForOversight) roles.push('adminOversight')
-  if (flags.isAdminForDenomination) roles.push('adminDenomination')
-
-  if (flags.isArrivalsAdminForStream) roles.push('arrivalsAdminStream')
-  if (flags.isArrivalsAdminForCampus) roles.push('arrivalsAdminCampus')
-  if (flags.isArrivalsAdminForCouncil) roles.push('arrivalsAdminCouncil')
-  if (flags.isArrivalsAdminForGovernorship)
-    roles.push('arrivalsAdminGovernorship')
-
-  if (flags.isArrivalsCounterForStream) roles.push('arrivalsCounterStream')
-  if (flags.isArrivalsPayerCouncil) roles.push('tellerCouncil')
-  if (flags.isTellerForStream) roles.push('tellerStream')
-  if (flags.isSheepSeekerForStream) roles.push('sheepSeekerStream')
-
-  return [...new Set(roles)]
-}
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
   let session
@@ -52,7 +19,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     session = getSession()
 
     const result = await session.run(
-      `MATCH (m:User)
+      `MATCH (m:User:Member)
        WHERE ($email IS NOT NULL AND m.email = $email)
           OR ($id IS NOT NULL AND m.id = $id)
        RETURN

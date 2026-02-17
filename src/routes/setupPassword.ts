@@ -36,18 +36,27 @@ export const setupPassword = asyncHandler(
         )
       }
 
-      const { userId } = decoded
+      const { userId, action } = decoded
 
       session = getSession()
 
       const hashedPassword = await hashPassword(password)
 
+      // For password reset, allow overwriting existing password
+      // For first-time setup, only allow if password is NULL
+      const isPasswordReset = action === 'password_reset'
+
       const result = await session.run(
-        `MATCH (u:User {id: $userId, email: $email})
-       WHERE u.password IS NULL
-       SET u.password = $hashedPassword,
-           u.updatedAt = datetime()
-       RETURN u.id as id, u.email as email, u.firstName as firstName, u.lastName as lastName`,
+        isPasswordReset
+          ? `MATCH (u:User:Member {id: $userId, email: $email})
+             SET u.password = $hashedPassword,
+                 u.updatedAt = datetime()
+             RETURN u.id as id, u.email as email, u.firstName as firstName, u.lastName as lastName`
+          : `MATCH (u:User:Member {id: $userId, email: $email})
+             WHERE u.password IS NULL
+             SET u.password = $hashedPassword,
+                 u.updatedAt = datetime()
+             RETURN u.id as id, u.email as email, u.firstName as firstName, u.lastName as lastName`,
         {
           userId,
           email,
@@ -56,7 +65,12 @@ export const setupPassword = asyncHandler(
       )
 
       if (result.records.length === 0) {
-        throw new ApiError(404, 'User not found or password already set')
+        throw new ApiError(
+          404,
+          isPasswordReset
+            ? 'User not found'
+            : 'User not found or password already set',
+        )
       }
 
       const record = result.records[0]
