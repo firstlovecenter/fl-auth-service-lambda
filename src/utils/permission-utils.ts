@@ -87,7 +87,7 @@ export const SUPPORTED_ROLES = [
   ROLE_FISHER,
 ] as const
 
-export type SupportedRole = typeof SUPPORTED_ROLES[number]
+export type SupportedRole = (typeof SUPPORTED_ROLES)[number]
 
 /**
  * Validates if a role is in the supported roles list

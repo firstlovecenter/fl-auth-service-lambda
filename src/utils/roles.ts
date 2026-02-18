@@ -74,7 +74,8 @@ export function deriveRolesFromFlags(flags: RoleFlags): string[] {
   if (flags.isArrivalsAdminForStream) roles.push(ROLE_ARRIVALS_ADMIN_STREAM)
   if (flags.isArrivalsAdminForCampus) roles.push(ROLE_ARRIVALS_ADMIN_CAMPUS)
   if (flags.isArrivalsAdminForCouncil) roles.push(ROLE_ARRIVALS_ADMIN_COUNCIL)
-  if (flags.isArrivalsAdminForGovernorship) roles.push(ROLE_ARRIVALS_ADMIN_GOVERNORSHIP)
+  if (flags.isArrivalsAdminForGovernorship)
+    roles.push(ROLE_ARRIVALS_ADMIN_GOVERNORSHIP)
 
   // Arrivals Helper Roles
   if (flags.isArrivalsCounterForStream) roles.push(ROLE_ARRIVALS_COUNTER_STREAM)
