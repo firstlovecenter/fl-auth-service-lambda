@@ -51,7 +51,6 @@ describe('Role Derivation', () => {
     isArrivalsCounterForStream: false,
     isArrivalsPayerCouncil: false,
     isTellerForStream: false,
-    isSheepSeekerForStream: false,
     isFisher: false,
   }
 
@@ -328,20 +327,6 @@ describe('Role Derivation', () => {
 
       // Check that there are no duplicates
       expect(roles.length).toBe(new Set(roles).size)
-    })
-  })
-
-  describe('Unsupported Role Filtering', () => {
-    test('should handle isSheepSeekerForStream as non-standard role', () => {
-      // Note: isSheepSeekerForStream was in the original code but not in the ticket requirements
-      // This test documents the behavior
-      const roles = deriveRolesFromFlags({
-        ...defaultFlags,
-        isSheepSeekerForStream: true,
-      })
-      // Should not contain sheepSeekerStream since it's not in SUPPORTED_ROLES
-      expect(roles).not.toContain('sheepSeekerStream')
-      expect(roles).toEqual([])
     })
   })
 })
