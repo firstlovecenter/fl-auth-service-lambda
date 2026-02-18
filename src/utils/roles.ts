@@ -46,7 +46,6 @@ export interface RoleFlags {
   isArrivalsCounterForStream: boolean
   isArrivalsPayerCouncil: boolean
   isTellerForStream: boolean
-  isSheepSeekerForStream: boolean
   isFisher: boolean
 }
 
