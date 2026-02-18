@@ -4,6 +4,7 @@ import { getSession } from '../db/neo4j'
 import { comparePassword, signJWT, signRefreshToken } from '../utils/auth'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
 import { ROLES_CLAIM, deriveRolesFromFlags } from '../utils/roles'
+import { MEMBER_FLAGS_QUERY } from '../utils/queries'
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -24,29 +25,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
           OR ($id IS NOT NULL AND m.id = $id)
        RETURN
          m { .id, .firstName, .lastName, .email, .password } AS member,
-         {
-           leadsBacenta:        exists((m)-[:LEADS]->(:Bacenta)),
-           leadsGovernorship:   exists((m)-[:LEADS]->(:Governorship)),
-           leadsCouncil:        exists((m)-[:LEADS]->(:Council)),
-           leadsStream:         exists((m)-[:LEADS]->(:Stream)),
-           leadsCampus:         exists((m)-[:LEADS]->(:Campus)),
-           leadsOversight:      exists((m)-[:LEADS]->(:Oversight)),
-           leadsDenomination:   exists((m)-[:LEADS]->(:Denomination)),
-           isAdminForCampus:        exists((m)-[:IS_ADMIN_FOR]->(:Campus)),
-           isAdminForGovernorship:  exists((m)-[:IS_ADMIN_FOR]->(:Governorship)),
-           isAdminForCouncil:       exists((m)-[:IS_ADMIN_FOR]->(:Council)),
-           isAdminForStream:        exists((m)-[:IS_ADMIN_FOR]->(:Stream)),
-           isAdminForOversight:     exists((m)-[:IS_ADMIN_FOR]->(:Oversight)),
-           isAdminForDenomination:  exists((m)-[:IS_ADMIN_FOR]->(:Denomination)),
-           isArrivalsAdminForStream:        exists((m)-[:IS_ARRIVALS_ADMIN_FOR]->(:Stream)),
-           isArrivalsAdminForCampus:       exists((m)-[:IS_ARRIVALS_ADMIN_FOR]->(:Campus)),
-           isArrivalsAdminForCouncil:      exists((m)-[:IS_ARRIVALS_ADMIN_FOR]->(:Council)),
-           isArrivalsAdminForGovernorship: exists((m)-[:IS_ARRIVALS_ADMIN_FOR]->(:Governorship)),
-           isArrivalsCounterForStream:     exists((m)-[:IS_ARRIVALS_COUNTER_FOR]->(:Stream)),
-           isArrivalsPayerCouncil:         exists((m)-[:IS_ARRIVALS_PAYER_FOR]->(:Council)),
-           isTellerForStream:              exists((m)-[:IS_TELLER_FOR]->(:Stream)),
-           isSheepSeekerForStream:         exists((m)-[:IS_SHEEP_SEEKER_FOR]->(:Stream))
-         } AS flags
+         ${MEMBER_FLAGS_QUERY}
        LIMIT 1`,
       { email, id: null },
     )
