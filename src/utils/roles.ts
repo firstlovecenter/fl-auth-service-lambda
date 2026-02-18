@@ -1,3 +1,28 @@
+import {
+  ROLE_LEADER_DENOMINATION,
+  ROLE_LEADER_OVERSIGHT,
+  ROLE_LEADER_CAMPUS,
+  ROLE_LEADER_STREAM,
+  ROLE_LEADER_COUNCIL,
+  ROLE_LEADER_GOVERNORSHIP,
+  ROLE_LEADER_BACENTA,
+  ROLE_ADMIN_DENOMINATION,
+  ROLE_ADMIN_OVERSIGHT,
+  ROLE_ADMIN_CAMPUS,
+  ROLE_ADMIN_STREAM,
+  ROLE_ADMIN_COUNCIL,
+  ROLE_ADMIN_GOVERNORSHIP,
+  ROLE_ARRIVALS_ADMIN_STREAM,
+  ROLE_ARRIVALS_ADMIN_CAMPUS,
+  ROLE_ARRIVALS_ADMIN_COUNCIL,
+  ROLE_ARRIVALS_ADMIN_GOVERNORSHIP,
+  ROLE_ARRIVALS_COUNTER_STREAM,
+  ROLE_ARRIVALS_PAYER_COUNCIL,
+  ROLE_TELLER_STREAM,
+  ROLE_FISHER,
+  filterValidRoles,
+} from './permission-utils'
+
 export const ROLES_CLAIM = 'roles'
 
 export interface RoleFlags {
@@ -21,37 +46,46 @@ export interface RoleFlags {
   isArrivalsCounterForStream: boolean
   isArrivalsPayerCouncil: boolean
   isTellerForStream: boolean
-  isSheepSeekerForStream: boolean
+  isFisher: boolean
 }
 
 export function deriveRolesFromFlags(flags: RoleFlags): string[] {
   const roles: string[] = []
 
-  if (flags.leadsBacenta) roles.push('leaderBacenta')
-  if (flags.leadsCampus) roles.push('leaderCampus')
-  if (flags.leadsCouncil) roles.push('leaderCouncil')
-  if (flags.leadsStream) roles.push('leaderStream')
-  if (flags.leadsGovernorship) roles.push('leaderGovernorship')
-  if (flags.leadsOversight) roles.push('leaderOversight')
-  if (flags.leadsDenomination) roles.push('leaderDenomination')
+  // Leader Roles
+  if (flags.leadsBacenta) roles.push(ROLE_LEADER_BACENTA)
+  if (flags.leadsCampus) roles.push(ROLE_LEADER_CAMPUS)
+  if (flags.leadsCouncil) roles.push(ROLE_LEADER_COUNCIL)
+  if (flags.leadsStream) roles.push(ROLE_LEADER_STREAM)
+  if (flags.leadsGovernorship) roles.push(ROLE_LEADER_GOVERNORSHIP)
+  if (flags.leadsOversight) roles.push(ROLE_LEADER_OVERSIGHT)
+  if (flags.leadsDenomination) roles.push(ROLE_LEADER_DENOMINATION)
 
-  if (flags.isAdminForStream) roles.push('adminStream')
-  if (flags.isAdminForCampus) roles.push('adminCampus')
-  if (flags.isAdminForCouncil) roles.push('adminCouncil')
-  if (flags.isAdminForGovernorship) roles.push('adminGovernorship')
-  if (flags.isAdminForOversight) roles.push('adminOversight')
-  if (flags.isAdminForDenomination) roles.push('adminDenomination')
+  // Admin Roles
+  if (flags.isAdminForStream) roles.push(ROLE_ADMIN_STREAM)
+  if (flags.isAdminForCampus) roles.push(ROLE_ADMIN_CAMPUS)
+  if (flags.isAdminForCouncil) roles.push(ROLE_ADMIN_COUNCIL)
+  if (flags.isAdminForGovernorship) roles.push(ROLE_ADMIN_GOVERNORSHIP)
+  if (flags.isAdminForOversight) roles.push(ROLE_ADMIN_OVERSIGHT)
+  if (flags.isAdminForDenomination) roles.push(ROLE_ADMIN_DENOMINATION)
 
-  if (flags.isArrivalsAdminForStream) roles.push('arrivalsAdminStream')
-  if (flags.isArrivalsAdminForCampus) roles.push('arrivalsAdminCampus')
-  if (flags.isArrivalsAdminForCouncil) roles.push('arrivalsAdminCouncil')
+  // Arrivals Admin Roles
+  if (flags.isArrivalsAdminForStream) roles.push(ROLE_ARRIVALS_ADMIN_STREAM)
+  if (flags.isArrivalsAdminForCampus) roles.push(ROLE_ARRIVALS_ADMIN_CAMPUS)
+  if (flags.isArrivalsAdminForCouncil) roles.push(ROLE_ARRIVALS_ADMIN_COUNCIL)
   if (flags.isArrivalsAdminForGovernorship)
-    roles.push('arrivalsAdminGovernorship')
+    roles.push(ROLE_ARRIVALS_ADMIN_GOVERNORSHIP)
 
-  if (flags.isArrivalsCounterForStream) roles.push('arrivalsCounterStream')
-  if (flags.isArrivalsPayerCouncil) roles.push('tellerCouncil')
-  if (flags.isTellerForStream) roles.push('tellerStream')
-  if (flags.isSheepSeekerForStream) roles.push('sheepSeekerStream')
+  // Arrivals Helper Roles
+  if (flags.isArrivalsCounterForStream) roles.push(ROLE_ARRIVALS_COUNTER_STREAM)
+  if (flags.isArrivalsPayerCouncil) roles.push(ROLE_ARRIVALS_PAYER_COUNCIL)
 
-  return [...new Set(roles)]
+  // Teller Roles
+  if (flags.isTellerForStream) roles.push(ROLE_TELLER_STREAM)
+
+  // Fisher Role
+  if (flags.isFisher) roles.push(ROLE_FISHER)
+
+  // Ensure only valid roles are returned and remove duplicates
+  return [...new Set(filterValidRoles(roles))]
 }
