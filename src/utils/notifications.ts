@@ -274,7 +274,7 @@ export const sendPasswordResetEmail = async (
               <tbody>
                 <!-- Header Section -->
                 <tr>
-                  <td style="background:linear-gradient(135deg,rgb(34,197,94),rgb(22,163,74));padding:60px 40px;text-align:center;color:rgb(255,255,255)">
+                  <td style="background:linear-gradient(135deg,rgb(220,38,38),rgb(190,24,24));padding:60px 40px;text-align:center;color:rgb(255,255,255)">
                     <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;opacity:0.9;margin-bottom:16px">Success</div>
                     <h1 style="font-size:36px;font-weight:700;margin:0;margin-bottom:12px;letter-spacing:-0.5px">Password Updated</h1>
                     <p style="font-size:18px;margin:0;opacity:0.95;font-weight:300;line-height:28px">Your account is now secure</p>
@@ -293,7 +293,7 @@ export const sendPasswordResetEmail = async (
                     </p>
 
                     <!-- Info Box -->
-                    <table align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:rgb(240,253,244);border-left:3px solid rgb(34,197,94);margin:36px 0 0 0;border-radius:0 8px 8px 0">
+                    <table align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:rgb(254,242,242);border-left:3px solid rgb(220,38,38);margin:36px 0 0 0;border-radius:0 8px 8px 0">
                       <tbody>
                         <tr>
                           <td style="padding:24px 24px">
@@ -398,7 +398,7 @@ export const sendPasswordSetupEmail = async (
               <tbody>
                 <!-- Header Section -->
                 <tr>
-                  <td style="background:linear-gradient(135deg,rgb(59,130,246),rgb(37,99,235));padding:60px 40px;text-align:center;color:rgb(255,255,255)">
+                  <td style="background:linear-gradient(135deg,rgb(220,38,38),rgb(190,24,24));padding:60px 40px;text-align:center;color:rgb(255,255,255)">
                     <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;opacity:0.9;margin-bottom:16px">Action Required</div>
                     <h1 style="font-size:36px;font-weight:700;margin:0;margin-bottom:12px;letter-spacing:-0.5px">Set Up Your Password</h1>
                     <p style="font-size:18px;margin:0;opacity:0.95;font-weight:300;line-height:28px">Complete your account setup</p>
@@ -417,7 +417,7 @@ export const sendPasswordSetupEmail = async (
                     </p>
 
                     <!-- Info Box -->
-                    <table align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:rgb(240,245,255);border-left:3px solid rgb(59,130,246);margin:36px 0 0 0;border-radius:0 8px 8px 0">
+                    <table align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:rgb(254,242,242);border-left:3px solid rgb(220,38,38);margin:36px 0 0 0;border-radius:0 8px 8px 0">
                       <tbody>
                         <tr>
                           <td style="padding:24px 24px">
@@ -435,7 +435,7 @@ export const sendPasswordSetupEmail = async (
                       <tbody>
                         <tr>
                           <td align="center">
-                            <a href="${setupLink}" target="_blank" style="display:inline-block;background-color:rgb(59,130,246);color:rgb(255,255,255);text-decoration:none;font-weight:600;font-size:16px;line-height:20px;padding:16px 32px;border-radius:10px;box-shadow:0 2px 8px rgba(59,130,246,0.3);transition:all 0.2s ease">Set Up Password</a>
+                            <a href="${setupLink}" target="_blank" style="display:inline-block;background-color:rgb(220,38,38);color:rgb(255,255,255);text-decoration:none;font-weight:600;font-size:16px;line-height:20px;padding:16px 32px;border-radius:10px;box-shadow:0 2px 8px rgba(220,38,38,0.3);transition:all 0.2s ease">Set Up Password</a>
                           </td>
                         </tr>
                       </tbody>
@@ -444,7 +444,7 @@ export const sendPasswordSetupEmail = async (
                     <!-- Fallback Link -->
                     <p style="font-size:14px;color:rgb(107,114,128);line-height:22px;margin:24px 0 0 0;text-align:center">
                       Or copy and paste this link:<br>
-                      <span style="color:rgb(59,130,246);word-break:break-all;font-weight:500;font-size:13px">${setupLink}</span>
+                      <span style="color:rgb(220,38,38);word-break:break-all;font-weight:500;font-size:13px">${setupLink}</span>
                     </p>
 
                     <!-- Bottom Text -->
@@ -531,7 +531,7 @@ export const sendAccountDeletionEmail = async (
               <tbody>
                 <!-- Header Section -->
                 <tr>
-                  <td style="background:linear-gradient(135deg,rgb(107,114,128),rgb(75,85,99));padding:60px 40px;text-align:center;color:rgb(255,255,255)">
+                  <td style="background:linear-gradient(135deg,rgb(220,38,38),rgb(190,24,24));padding:60px 40px;text-align:center;color:rgb(255,255,255)">
                     <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;opacity:0.9;margin-bottom:16px">Confirmation</div>
                     <h1 style="font-size:36px;font-weight:700;margin:0;margin-bottom:12px;letter-spacing:-0.5px">Account Deleted</h1>
                     <p style="font-size:18px;margin:0;opacity:0.95;font-weight:300;line-height:28px">Your data has been removed</p>
@@ -550,7 +550,7 @@ export const sendAccountDeletionEmail = async (
                     </p>
 
                     <!-- Info Box -->
-                    <table align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:rgb(245,245,245);border-left:3px solid rgb(107,114,128);margin:36px 0 0 0;border-radius:0 8px 8px 0">
+                    <table align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:rgb(254,242,242);border-left:3px solid rgb(220,38,38);margin:36px 0 0 0;border-radius:0 8px 8px 0">
                       <tbody>
                         <tr>
                           <td style="padding:24px 24px">
@@ -662,7 +662,7 @@ export const sendPasswordResetRequestEmail = async (
               <tbody>
                 <!-- Header Section -->
                 <tr>
-                  <td style="background:linear-gradient(135deg,rgb(245,158,11),rgb(217,119,6));padding:60px 40px;text-align:center;color:rgb(255,255,255)">
+                  <td style="background:linear-gradient(135deg,rgb(220,38,38),rgb(190,24,24));padding:60px 40px;text-align:center;color:rgb(255,255,255)">
                     <div style="font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;opacity:0.9;margin-bottom:16px">Security</div>
                     <h1 style="font-size:36px;font-weight:700;margin:0;margin-bottom:12px;letter-spacing:-0.5px">Reset Your Password</h1>
                     <p style="font-size:18px;margin:0;opacity:0.95;font-weight:300;line-height:28px">Secure your account in one step</p>
@@ -681,7 +681,7 @@ export const sendPasswordResetRequestEmail = async (
                     </p>
 
                     <!-- Info Box -->
-                    <table align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:rgb(255,250,235);border-left:3px solid rgb(245,158,11);margin:36px 0 0 0;border-radius:0 8px 8px 0">
+                    <table align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:rgb(254,242,242);border-left:3px solid rgb(220,38,38);margin:36px 0 0 0;border-radius:0 8px 8px 0">
                       <tbody>
                         <tr>
                           <td style="padding:24px 24px">
@@ -699,7 +699,7 @@ export const sendPasswordResetRequestEmail = async (
                       <tbody>
                         <tr>
                           <td align="center">
-                            <a href="${resetLink}" target="_blank" style="display:inline-block;background-color:rgb(245,158,11);color:rgb(255,255,255);text-decoration:none;font-weight:600;font-size:16px;line-height:20px;padding:16px 32px;border-radius:10px;box-shadow:0 2px 8px rgba(245,158,11,0.3);transition:all 0.2s ease">Reset Password</a>
+                            <a href="${resetLink}" target="_blank" style="display:inline-block;background-color:rgb(220,38,38);color:rgb(255,255,255);text-decoration:none;font-weight:600;font-size:16px;line-height:20px;padding:16px 32px;border-radius:10px;box-shadow:0 2px 8px rgba(220,38,38,0.3);transition:all 0.2s ease">Reset Password</a>
                           </td>
                         </tr>
                       </tbody>
@@ -708,7 +708,7 @@ export const sendPasswordResetRequestEmail = async (
                     <!-- Fallback Link -->
                     <p style="font-size:14px;color:rgb(107,114,128);line-height:22px;margin:24px 0 0 0;text-align:center">
                       Or copy and paste this link:<br>
-                      <span style="color:rgb(245,158,11);word-break:break-all;font-weight:500;font-size:13px">${resetLink}</span>
+                      <span style="color:rgb(220,38,38);word-break:break-all;font-weight:500;font-size:13px">${resetLink}</span>
                     </p>
 
                     <!-- Warning Section -->
