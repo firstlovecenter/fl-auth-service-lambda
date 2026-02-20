@@ -40,7 +40,7 @@ export const ROLE_ARRIVALS_PAYER_COUNCIL = 'arrivalsPayerCouncil'
 export const ROLE_TELLER_STREAM = 'tellerStream'
 
 // Fisher Role
-export const ROLE_FISHER = 'fisher'
+export const ROLE_FISHER = 'fishers'
 
 /**
  * Complete list of all supported roles
