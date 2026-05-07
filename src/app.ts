@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express'
 import { corsMiddleware } from './middleware/cors'
+import { requireBearerAuth } from './middleware/auth'
 import { requestIdMiddleware, requestLogger } from './middleware/requestLogger'
 import { jsonBodyParser, validateBody } from './middleware/bodyParser'
 import { errorHandler, asyncHandler } from './middleware/errorHandler'
@@ -15,6 +16,7 @@ import { setupPassword } from './routes/setupPassword'
 import { forgotPassword } from './routes/forgotPassword'
 import { resetPassword } from './routes/resetPassword'
 import { deleteAccount } from './routes/deleteAccount'
+import { getChurches } from './routes/getChurches'
 
 // Initialize Express app
 const app = express()
@@ -117,11 +119,18 @@ app.post('/auth/reset-password', resetPassword)
 
 /**
  * DELETE /auth/delete-account
- * Permanently delete user account (requires token verification)
- * Body: { token, confirmDeletion: true }
+ * Permanently delete user account (requires Bearer token)
+ * Body: { confirmDeletion: true }
  * Returns: { message, accountId }
  */
-app.delete('/auth/delete-account', deleteAccount)
+app.delete('/auth/delete-account', requireBearerAuth, deleteAccount)
+
+/**
+ * POST /auth/churches
+ * Fetch church list for authenticated user (requires Bearer token)
+ * Body: { email? }
+ */
+app.post('/auth/churches', requireBearerAuth, getChurches)
 
 // ──────────────────────────────────────────────────────────────────────────────
 // 404 Handler
