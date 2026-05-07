@@ -15,7 +15,6 @@ import { setupPassword } from './routes/setupPassword'
 import { forgotPassword } from './routes/forgotPassword'
 import { resetPassword } from './routes/resetPassword'
 import { deleteAccount } from './routes/deleteAccount'
-import { getChurches } from './routes/getChurches'
 
 // Initialize Express app
 const app = express()
@@ -123,13 +122,6 @@ app.post('/auth/reset-password', resetPassword)
  * Returns: { message, accountId }
  */
 app.delete('/auth/delete-account', deleteAccount)
-
-/**
- * POST /auth/churches
- * Fetch church list for authenticated user
- * Body: { token, email? }
- */
-app.post('/auth/churches', getChurches)
 
 // ──────────────────────────────────────────────────────────────────────────────
 // 404 Handler

@@ -16,7 +16,10 @@ const initializeAllowedOrigins = async (): Promise<Set<string>> => {
   }
 
   const environment = await getSecret('ENVIRONMENT')
-  const origins = [process.env.AMPLIFY_URL || '']
+  const origins = [
+    'http://localhost:3000',
+    process.env.AMPLIFY_URL || '',
+  ]
 
   // Add environment-specific origin
   if (environment === 'production') {
@@ -24,8 +27,6 @@ const initializeAllowedOrigins = async (): Promise<Set<string>> => {
     origins.push('https://synago.firstlovecenter.com')
   } else if (environment === 'development') {
     origins.push('https://dev-synago.firstlovecenter.com')
-    origins.push('http://localhost:3000')
-    origins.push('http://localhost:5173')
   }
 
   allowedOrigins = new Set(origins.filter(Boolean))
