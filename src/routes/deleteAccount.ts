@@ -1,13 +1,11 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSession } from '../db/neo4j'
-import { verifyJWT } from '../utils/auth'
+import { AuthenticatedRequest } from '../middleware/auth'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
 import { sendAccountDeletionEmail } from '../utils/notifications'
-import type { JWTPayload } from '../types'
 
 const deleteAccountSchema = z.object({
-  token: z.string().min(1, 'Authorization token is required'),
   confirmDeletion: z.boolean().refine((val) => val === true, {
     message: 'You must confirm account deletion',
   }),
@@ -23,13 +21,12 @@ export const deleteAccount = asyncHandler(async (req: Request, res: Response) =>
   let session
 
   try {
-    const { token, confirmDeletion } = deleteAccountSchema.parse(req.body)
+    const { confirmDeletion } = deleteAccountSchema.parse(req.body)
+    const decoded = (req as AuthenticatedRequest).auth
 
     if (!confirmDeletion) {
       throw new ApiError(400, 'Account deletion must be explicitly confirmed')
     }
-
-    const decoded = (await verifyJWT(token)) as JWTPayload
 
     session = getSession()
 
