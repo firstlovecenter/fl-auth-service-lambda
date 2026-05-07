@@ -1,12 +1,10 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSession } from '../db/neo4j'
-import { verifyJWT } from '../utils/auth'
+import { AuthenticatedRequest } from '../middleware/auth'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
-import type { JWTPayload } from '../types'
 
 const getChurchesSchema = z.object({
-  token: z.string().min(1, 'Token is required'),
   email: z.string().email('Invalid email address').optional(),
 })
 
@@ -43,8 +41,8 @@ export const getChurches = asyncHandler(async (req: Request, res: Response) => {
   let session
 
   try {
-    const { token, email } = getChurchesSchema.parse(req.body)
-    const decoded = (await verifyJWT(token)) as JWTPayload
+    const { email } = getChurchesSchema.parse(req.body)
+    const decoded = (req as AuthenticatedRequest).auth
 
     if (email && decoded.email && email.toLowerCase() !== decoded.email.toLowerCase()) {
       throw new ApiError(403, 'You can only fetch churches for your own account')
