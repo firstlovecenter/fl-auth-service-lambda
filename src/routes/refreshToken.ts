@@ -5,6 +5,7 @@ import { signJWT, verifyJWT } from '../utils/auth'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
 import { ROLES_CLAIM, deriveRolesFromFlags } from '../utils/roles'
 import { MEMBER_FLAGS_QUERY } from '../utils/queries'
+import { hashToken } from './logout'
 import type { JWTPayload } from '../types'
 
 const refreshTokenSchema = z.object({
@@ -21,6 +22,18 @@ export const refreshToken = asyncHandler(
       const decoded = (await verifyJWT(refreshToken)) as JWTPayload
 
       session = getSession()
+
+      // Denylist check — reject tokens that have been revoked via logout
+      const tokenHash = hashToken(refreshToken)
+      const revokedResult = await session.run(
+        `MATCH (t:RevokedToken { tokenHash: $tokenHash })
+         WHERE t.expiresAt > datetime()
+         RETURN t LIMIT 1`,
+        { tokenHash },
+      )
+      if (revokedResult.records.length > 0) {
+        throw new ApiError(401, 'Token has been revoked')
+      }
 
       const result = await session.run(
         `MATCH (m:User:Member {id: $userId})
