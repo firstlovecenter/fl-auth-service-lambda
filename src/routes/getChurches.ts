@@ -45,8 +45,15 @@ export const getChurches = asyncHandler(async (req: Request, res: Response) => {
     const { token, email } = getChurchesSchema.parse(req.body)
     const decoded = (await verifyJWT(token)) as JWTPayload
 
-    if (email && decoded.email && email.toLowerCase() !== decoded.email.toLowerCase()) {
-      throw new ApiError(403, 'You can only fetch churches for your own account')
+    if (
+      email &&
+      decoded.email &&
+      email.toLowerCase() !== decoded.email.toLowerCase()
+    ) {
+      throw new ApiError(
+        403,
+        'You can only fetch churches for your own account',
+      )
     }
 
     session = getSession()
