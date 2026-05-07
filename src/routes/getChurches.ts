@@ -13,6 +13,7 @@ const getChurchesSchema = z.object({
 interface GraphEntity {
   id: string
   name: string | null
+  __typename?: string
 }
 
 const dedupeEntities = (entities: GraphEntity[]): GraphEntity[] => {
@@ -36,7 +37,7 @@ const dedupeEntities = (entities: GraphEntity[]): GraphEntity[] => {
 
 /**
  * POST /auth/churches
- * Fetch churches linked to the authenticated user.
+ * Fetch churches the authenticated user leads, grouped by church level.
  */
 export const getChurches = asyncHandler(async (req: Request, res: Response) => {
   let session
@@ -45,15 +46,8 @@ export const getChurches = asyncHandler(async (req: Request, res: Response) => {
     const { token, email } = getChurchesSchema.parse(req.body)
     const decoded = (await verifyJWT(token)) as JWTPayload
 
-    if (
-      email &&
-      decoded.email &&
-      email.toLowerCase() !== decoded.email.toLowerCase()
-    ) {
-      throw new ApiError(
-        403,
-        'You can only fetch churches for your own account',
-      )
+    if (email && decoded.email && email.toLowerCase() !== decoded.email.toLowerCase()) {
+      throw new ApiError(403, 'You can only fetch churches for your own account')
     }
 
     session = getSession()
@@ -66,41 +60,55 @@ export const getChurches = asyncHandler(async (req: Request, res: Response) => {
 
        CALL {
          WITH m
-         OPTIONAL MATCH (m)-[]-(linkedBacenta:Bacenta)
-         OPTIONAL MATCH (linkedBacenta)-[]-(linkedGovernorship:Governorship)
-         OPTIONAL MATCH (linkedGovernorship)-[]-(linkedCouncil:Council)
-         RETURN
-           collect(DISTINCT linkedBacenta { .id, name: coalesce(linkedBacenta.name, linkedBacenta.stream_name) }) AS hierarchyBacentas,
-           collect(DISTINCT linkedGovernorship { .id, name: linkedGovernorship.name }) AS hierarchyGovernorships,
-           collect(DISTINCT linkedCouncil { .id, name: linkedCouncil.name }) AS hierarchyCouncils
+         OPTIONAL MATCH (m)-[:LEADS]->(n:Bacenta)
+         RETURN collect(DISTINCT n { .id, name: coalesce(n.name, n.stream_name), __typename: 'Bacenta' }) AS leadsBacenta
        }
 
        CALL {
          WITH m
-         OPTIONAL MATCH (m)-[:LEADS|IS_ADMIN_FOR|DOES_ARRIVALS_FOR|IS_ARRIVALS_PAYER_FOR]->(roleBacenta:Bacenta)
-         RETURN collect(DISTINCT roleBacenta { .id, name: coalesce(roleBacenta.name, roleBacenta.stream_name) }) AS roleBacentas
+         OPTIONAL MATCH (m)-[:LEADS]->(n:Governorship)
+         RETURN collect(DISTINCT n { .id, name: n.name, __typename: 'Governorship' }) AS leadsGovernorship
        }
 
        CALL {
          WITH m
-         OPTIONAL MATCH (m)-[:LEADS|IS_ADMIN_FOR|DOES_ARRIVALS_FOR]->(roleGovernorship:Governorship)
-         RETURN collect(DISTINCT roleGovernorship { .id, name: roleGovernorship.name }) AS roleGovernorships
+         OPTIONAL MATCH (m)-[:LEADS]->(n:Council)
+         RETURN collect(DISTINCT n { .id, name: n.name, __typename: 'Council' }) AS leadsCouncil
        }
 
        CALL {
          WITH m
-         OPTIONAL MATCH (m)-[:LEADS|IS_ADMIN_FOR|DOES_ARRIVALS_FOR|IS_ARRIVALS_PAYER_FOR]->(roleCouncil:Council)
-         RETURN collect(DISTINCT roleCouncil { .id, name: roleCouncil.name }) AS roleCouncils
+         OPTIONAL MATCH (m)-[:LEADS]->(n:Stream)
+         RETURN collect(DISTINCT n { .id, name: n.name, __typename: 'Stream' }) AS leadsStream
+       }
+
+       CALL {
+         WITH m
+         OPTIONAL MATCH (m)-[:LEADS]->(n:Campus)
+         RETURN collect(DISTINCT n { .id, name: n.name, __typename: 'Campus' }) AS leadsCampus
+       }
+
+       CALL {
+         WITH m
+         OPTIONAL MATCH (m)-[:LEADS]->(n:Oversight)
+         RETURN collect(DISTINCT n { .id, name: n.name, __typename: 'Oversight' }) AS leadsOversight
+       }
+
+       CALL {
+         WITH m
+         OPTIONAL MATCH (m)-[:LEADS]->(n:Denomination)
+         RETURN collect(DISTINCT n { .id, name: n.name, __typename: 'Denomination' }) AS leadsDenomination
        }
 
        RETURN
          m { .id, .email, .firstName, .lastName } AS user,
-         hierarchyBacentas,
-         hierarchyGovernorships,
-         hierarchyCouncils,
-         roleBacentas,
-         roleGovernorships,
-         roleCouncils`,
+         leadsBacenta,
+         leadsGovernorship,
+         leadsCouncil,
+         leadsStream,
+         leadsCampus,
+         leadsOversight,
+         leadsDenomination`,
       {
         userId: decoded.userId,
         email: email ?? null,
@@ -113,29 +121,34 @@ export const getChurches = asyncHandler(async (req: Request, res: Response) => {
 
     const record = result.records[0]
     const user = record.get('user')
-    const bacentas = dedupeEntities([
-      ...(record.get('hierarchyBacentas') ?? []),
-      ...(record.get('roleBacentas') ?? []),
-    ])
-    const governorships = dedupeEntities([
-      ...(record.get('hierarchyGovernorships') ?? []),
-      ...(record.get('roleGovernorships') ?? []),
-    ])
-    const councils = dedupeEntities([
-      ...(record.get('hierarchyCouncils') ?? []),
-      ...(record.get('roleCouncils') ?? []),
-    ])
+    const leadsBacenta = dedupeEntities(record.get('leadsBacenta') ?? [])
+    const leadsGovernorship = dedupeEntities(record.get('leadsGovernorship') ?? [])
+    const leadsCouncil = dedupeEntities(record.get('leadsCouncil') ?? [])
+    const leadsStream = dedupeEntities(record.get('leadsStream') ?? [])
+    const leadsCampus = dedupeEntities(record.get('leadsCampus') ?? [])
+    const leadsOversight = dedupeEntities(record.get('leadsOversight') ?? [])
+    const leadsDenomination = dedupeEntities(record.get('leadsDenomination') ?? [])
+
+    const totalLeads =
+      leadsBacenta.length +
+      leadsGovernorship.length +
+      leadsCouncil.length +
+      leadsStream.length +
+      leadsCampus.length +
+      leadsOversight.length +
+      leadsDenomination.length
 
     res.status(200).json({
-      message: 'Churches fetched successfully',
+      message: 'Lead churches fetched successfully',
       user,
-      churches: councils,
-      hierarchy: {
-        bacentas,
-        governorships,
-        councils,
-      },
-      totalChurches: councils.length,
+      leadsBacenta,
+      leadsGovernorship,
+      leadsCouncil,
+      leadsStream,
+      leadsCampus,
+      leadsOversight,
+      leadsDenomination,
+      totalLeads,
     })
   } finally {
     if (session) {
