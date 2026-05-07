@@ -76,7 +76,9 @@ describe('Logout and token revocation', () => {
     })
 
     test('should store the revoked token hash in Neo4j', async () => {
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      const expiresAt = new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000,
+      ).toISOString()
 
       await session.run(
         `MERGE (t:RevokedToken { tokenHash: $tokenHash })
@@ -98,7 +100,9 @@ describe('Logout and token revocation', () => {
     })
 
     test('second logout (MERGE) on same token is idempotent — no duplicate nodes', async () => {
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      const expiresAt = new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000,
+      ).toISOString()
 
       // First logout
       await session.run(
@@ -128,16 +132,18 @@ describe('Logout and token revocation', () => {
   // ─────────────────────────────────────────────────────────────────────────
   describe('Refresh-token denylist check', () => {
     const REVOKED_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.revoked-token.signature'
-    const ACTIVE_TOKEN  = 'eyJhbGciOiJIUzI1NiJ9.active-token.signature'
+    const ACTIVE_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.active-token.signature'
     let revokedHash: string
     let activeHash: string
 
     beforeAll(async () => {
       revokedHash = hashToken(REVOKED_TOKEN)
-      activeHash  = hashToken(ACTIVE_TOKEN)
+      activeHash = hashToken(ACTIVE_TOKEN)
 
       // Insert revoked token with a future expiry (still valid window)
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      const expiresAt = new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000,
+      ).toISOString()
       await session.run(
         `MERGE (t:RevokedToken { tokenHash: $tokenHash })
          SET t.revokedAt = datetime(),
@@ -182,7 +188,9 @@ describe('Logout and token revocation', () => {
     test('denylist check does NOT block a token whose revocation has expired', async () => {
       // Insert a revocation entry that is already past its expiry
       const pastExpiresAt = new Date(Date.now() - 1000).toISOString()
-      const expiredHash = hashToken('eyJhbGciOiJIUzI1NiJ9.expired-revocation.sig')
+      const expiredHash = hashToken(
+        'eyJhbGciOiJIUzI1NiJ9.expired-revocation.sig',
+      )
 
       await session.run(
         `MERGE (t:RevokedToken { tokenHash: $tokenHash })
