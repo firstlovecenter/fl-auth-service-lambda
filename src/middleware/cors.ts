@@ -113,7 +113,18 @@ export const corsMiddleware = async (
     const { origins, environment } = await initializeAllowedOrigins()
     const origin = req.headers.origin
 
-    if (origin && isAllowedOrigin(origin, origins, environment)) {
+    const allowed = !!(origin && isAllowedOrigin(origin, origins, environment))
+
+    console.log('[CORS DEBUG]', {
+      method: req.method,
+      path: req.path,
+      origin: origin ?? '(none)',
+      environment,
+      allowed,
+      cachedOrigins: [...origins],
+    })
+
+    if (allowed) {
       res.header('Access-Control-Allow-Origin', origin)
     }
     res.header('Vary', 'Origin')
