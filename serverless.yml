@@ -21,15 +21,6 @@ provider:
     NEO4J_ENCRYPTED: ${env:NEO4J_ENCRYPTED, 'false'}
     JWT_SECRET: ${env:JWT_SECRET}
     PEPPER: ${env:PEPPER}
-  iam:
-    role:
-      statements:
-        - Effect: Allow
-          Action:
-            - ssm:GetParameter
-          Resource:
-            - arn:aws:ssm:eu-west-2:871777052000:parameter/fl-auth/prod/allowed-origins
-            - arn:aws:ssm:eu-west-2:871777052000:parameter/fl-auth/dev/allowed-origins
   vpc:
     securityGroupIds:
       - ${env:SECURITY_GROUP_ID}
