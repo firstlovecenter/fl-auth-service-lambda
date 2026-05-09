@@ -1,36 +1,107 @@
 import { Request, Response, NextFunction } from 'express'
+import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm'
 import { getSecret } from '../utils/secrets'
 
 /**
  * CORS middleware for Lambda
- * Allows requests from configured origins based on environment
+ * Allowed origins are loaded from SSM Parameter Store:
+ *   /fl-auth/prod/allowed-origins  (JSON array of strings)
+ *   /fl-auth/dev/allowed-origins   (JSON array of strings)
+ *
+ * In addition:
+ *  - Any *.firstlovecenter.com / firstlovecenter.com origin is always allowed
+ *  - In dev, any localhost origin (any port) is always allowed
  */
-let allowedOrigins: Set<string> | null = null
 
-/**
- * Initialize allowed origins based on environment
- */
-const initializeAllowedOrigins = async (): Promise<Set<string>> => {
-  if (allowedOrigins) {
-    return allowedOrigins
+const ssmClient = new SSMClient({
+  region: process.env.AWS_REGION || 'eu-west-2',
+})
+
+let allowedOriginsCache: Set<string> | null = null
+let environmentCache: string | null = null
+
+const loadOriginsFromSSM = async (environment: string): Promise<string[]> => {
+  const paramPath =
+    environment === 'production'
+      ? '/fl-auth/prod/allowed-origins'
+      : '/fl-auth/dev/allowed-origins'
+
+  try {
+    const command = new GetParameterCommand({
+      Name: paramPath,
+      WithDecryption: false,
+    })
+    const response = await ssmClient.send(command)
+    const value = response.Parameter?.Value
+    if (value) {
+      return JSON.parse(value) as string[]
+    }
+  } catch (error) {
+    console.warn(
+      `Could not load CORS origins from SSM (${paramPath}):`,
+      error instanceof Error ? error.message : String(error),
+    )
+  }
+  return []
+}
+
+const initializeAllowedOrigins = async (): Promise<{
+  origins: Set<string>
+  environment: string
+}> => {
+  if (allowedOriginsCache && environmentCache) {
+    return { origins: allowedOriginsCache, environment: environmentCache }
   }
 
   const environment = await getSecret('ENVIRONMENT')
-  const origins = [
-    'http://localhost:3000',
-    process.env.AMPLIFY_URL || '',
-  ]
+  environmentCache = environment
 
-  // Add environment-specific origin
-  if (environment === 'production') {
-    origins.push('https://admin.firstlovecenter.com')
-    origins.push('https://synago.firstlovecenter.com')
-  } else if (environment === 'development') {
-    origins.push('https://dev-synago.firstlovecenter.com')
+  const ssmOrigins = await loadOriginsFromSSM(environment)
+  const amplifyUrl = process.env.AMPLIFY_URL
+
+  const allOrigins = [...ssmOrigins, ...(amplifyUrl ? [amplifyUrl] : [])]
+
+  allowedOriginsCache = new Set(allOrigins.filter(Boolean))
+  return { origins: allowedOriginsCache, environment }
+}
+
+const isAllowedOrigin = (
+  requestOrigin: string,
+  origins: Set<string>,
+  environment: string,
+): boolean => {
+  // 1. Exact match from SSM list
+  if (origins.has(requestOrigin)) {
+    return true
   }
 
-  allowedOrigins = new Set(origins.filter(Boolean))
-  return allowedOrigins
+  // 2. Wildcard — covers all current and future *.firstlovecenter.com apps
+  try {
+    const { hostname } = new URL(requestOrigin)
+    if (
+      hostname === 'firstlovecenter.com' ||
+      hostname.endsWith('.firstlovecenter.com')
+    ) {
+      return true
+    }
+  } catch {
+    // invalid URL — deny
+    return false
+  }
+
+  // 3. In dev, allow any localhost origin (any port, http or https)
+  if (environment !== 'production') {
+    try {
+      const { hostname } = new URL(requestOrigin)
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return true
+      }
+    } catch {
+      return false
+    }
+  }
+
+  return false
 }
 
 export const corsMiddleware = async (
@@ -39,10 +110,10 @@ export const corsMiddleware = async (
   next: NextFunction,
 ) => {
   try {
-    const origins = await initializeAllowedOrigins()
+    const { origins, environment } = await initializeAllowedOrigins()
     const origin = req.headers.origin
 
-    if (origin && origins.has(origin)) {
+    if (origin && isAllowedOrigin(origin, origins, environment)) {
       res.header('Access-Control-Allow-Origin', origin)
     }
     res.header('Vary', 'Origin')
