@@ -3,7 +3,11 @@ import { z } from 'zod'
 import { getSession } from '../db/neo4j'
 import { comparePassword, signJWT, signRefreshToken } from '../utils/auth'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
-import { ROLES_CLAIM, deriveRolesFromFlags } from '../utils/roles'
+import {
+  ROLES_CLAIM,
+  deriveRolesFromFlags,
+  extractChurchScopes,
+} from '../utils/roles'
 import { MEMBER_FLAGS_QUERY } from '../utils/queries'
 
 const loginSchema = z.object({
@@ -53,6 +57,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     }
 
     const roles = deriveRolesFromFlags(flags)
+    const churchScopes = extractChurchScopes(flags)
 
     // Generate tokens
     const accessToken = await signJWT(
@@ -62,6 +67,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
         firstName: member.firstName,
         lastName: member.lastName,
         [ROLES_CLAIM]: roles,
+        churchScopes,
       },
       '30m',
     )

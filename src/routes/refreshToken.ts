@@ -3,7 +3,11 @@ import { z } from 'zod'
 import { getSession } from '../db/neo4j'
 import { signJWT, verifyJWT } from '../utils/auth'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
-import { ROLES_CLAIM, deriveRolesFromFlags } from '../utils/roles'
+import {
+  ROLES_CLAIM,
+  deriveRolesFromFlags,
+  extractChurchScopes,
+} from '../utils/roles'
 import { MEMBER_FLAGS_QUERY } from '../utils/queries'
 import type { JWTPayload } from '../types'
 
@@ -40,6 +44,7 @@ export const refreshToken = asyncHandler(
       const flags = record.get('flags')
 
       const roles = deriveRolesFromFlags(flags)
+      const churchScopes = extractChurchScopes(flags)
 
       const newAccessToken = await signJWT(
         {
@@ -48,6 +53,7 @@ export const refreshToken = asyncHandler(
           firstName: member.firstName,
           lastName: member.lastName,
           [ROLES_CLAIM]: roles,
+          churchScopes,
         },
         '30m',
       )

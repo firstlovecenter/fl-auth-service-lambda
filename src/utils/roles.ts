@@ -25,27 +25,53 @@ import {
 
 export const ROLES_CLAIM = 'roles'
 
+export interface ChurchNode {
+  id: string
+  name: string
+}
+
 export interface RoleFlags {
   leadsBacenta: boolean
+  leadsBacentaOf?: ChurchNode | null
   leadsCampus: boolean
+  leadsCampusOf?: ChurchNode | null
   leadsCouncil: boolean
+  leadsCouncilOf?: ChurchNode | null
   leadsStream: boolean
+  leadsStreamOf?: ChurchNode | null
   leadsGovernorship: boolean
+  leadsGovernorshipOf?: ChurchNode | null
   leadsOversight: boolean
+  leadsOversightOf?: ChurchNode | null
   leadsDenomination: boolean
+  leadsDenominationOf?: ChurchNode | null
   isAdminForStream: boolean
+  isAdminForStreamOf?: ChurchNode | null
   isAdminForCampus: boolean
+  isAdminForCampusOf?: ChurchNode | null
   isAdminForCouncil: boolean
+  isAdminForCouncilOf?: ChurchNode | null
   isAdminForGovernorship: boolean
+  isAdminForGovernorshipOf?: ChurchNode | null
   isAdminForOversight: boolean
+  isAdminForOversightOf?: ChurchNode | null
   isAdminForDenomination: boolean
+  isAdminForDenominationOf?: ChurchNode | null
   isArrivalsAdminForStream: boolean
+  isArrivalsAdminForStreamOf?: ChurchNode | null
   isArrivalsAdminForCampus: boolean
+  isArrivalsAdminForCampusOf?: ChurchNode | null
   isArrivalsAdminForCouncil: boolean
+  isArrivalsAdminForCouncilOf?: ChurchNode | null
   isArrivalsAdminForGovernorship: boolean
   isArrivalsCounterForStream: boolean
+  isArrivalsCounterForStreamOf?: ChurchNode | null
   isArrivalsPayerCouncil: boolean
+  isArrivalsPayerCouncilOf?: ChurchNode | null
   isTellerForStream: boolean
+  isTellerForStreamOf?: ChurchNode | null
+  isSheepSeekerForStream?: boolean
+  isSheepSeekerForStreamOf?: ChurchNode | null
   isFisher: boolean
 }
 
@@ -88,4 +114,40 @@ export function deriveRolesFromFlags(flags: RoleFlags): string[] {
 
   // Ensure only valid roles are returned and remove duplicates
   return [...new Set(filterValidRoles(roles))]
+}
+
+const CHURCH_SCOPE_KEYS: ReadonlyArray<keyof RoleFlags> = [
+  'leadsBacentaOf',
+  'leadsGovernorshipOf',
+  'leadsCouncilOf',
+  'leadsStreamOf',
+  'leadsCampusOf',
+  'leadsOversightOf',
+  'leadsDenominationOf',
+  'isAdminForCampusOf',
+  'isAdminForGovernorshipOf',
+  'isAdminForCouncilOf',
+  'isAdminForStreamOf',
+  'isAdminForOversightOf',
+  'isAdminForDenominationOf',
+  'isArrivalsAdminForStreamOf',
+  'isArrivalsAdminForCampusOf',
+  'isArrivalsAdminForCouncilOf',
+  'isArrivalsCounterForStreamOf',
+  'isArrivalsPayerCouncilOf',
+  'isTellerForStreamOf',
+  'isSheepSeekerForStreamOf',
+]
+
+export function extractChurchScopes(
+  flags: Record<string, unknown>,
+): Record<string, ChurchNode> {
+  const scopes: Record<string, ChurchNode> = {}
+  for (const key of CHURCH_SCOPE_KEYS) {
+    const value = flags[key as string]
+    if (value != null) {
+      scopes[key as string] = value as ChurchNode
+    }
+  }
+  return scopes
 }
