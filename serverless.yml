@@ -6,27 +6,23 @@ plugins:
   - serverless-plugin-typescript
   - serverless-offline
 
+custom:
+  secretName:
+    dev: dev/fl-admin-portal
+    prod: prod/fl-admin-portal
+
 provider:
   name: aws
   runtime: nodejs18.x
   region: eu-west-2
+  stage: ${opt:stage, 'dev'}
   timeout: 60
   memorySize: 1024
   ephemeralStorageSize: 10240
   architecture: arm64
   environment:
-    NEO4J_URI: ${env:NEO4J_URI}
-    NEO4J_USER: ${env:NEO4J_USER}
-    NEO4J_PASSWORD: ${env:NEO4J_PASSWORD}
-    NEO4J_ENCRYPTED: ${env:NEO4J_ENCRYPTED, 'false'}
-    JWT_SECRET: ${env:JWT_SECRET}
-    PEPPER: ${env:PEPPER}
-  vpc:
-    securityGroupIds:
-      - ${env:SECURITY_GROUP_ID}
-    subnetIds:
-      - ${env:SUBNET_ID_1}
-      - ${env:SUBNET_ID_2}
+    AWS_SECRET_NAME: ${self:custom.secretName.${sls:stage}}
+    NEO4J_ENCRYPTED: 'false'
 
 functions:
   api:
