@@ -8,7 +8,8 @@ import {
   deriveRolesFromFlags,
   extractChurchScopes,
 } from '../utils/roles'
-import { MEMBER_FLAGS_QUERY } from '../utils/queries'
+import { MEMBER_FLAGS_QUERY, MEMBER_MEMBERSHIP_CALL } from '../utils/queries'
+import { MembershipInfo } from '../types'
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -27,10 +28,12 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
       `MATCH (m:User:Member)
        WHERE ($email IS NOT NULL AND m.email = $email)
           OR ($id IS NOT NULL AND m.id = $id)
+       WITH m LIMIT 1
+       ${MEMBER_MEMBERSHIP_CALL}
        RETURN
          m { .id, .firstName, .lastName, .email, .password } AS member,
-         ${MEMBER_FLAGS_QUERY}
-       LIMIT 1`,
+         ${MEMBER_FLAGS_QUERY},
+         membership`,
       { email, id: null },
     )
 
@@ -41,6 +44,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     const record = result.records[0]
     const member = record.get('member')
     const flags = record.get('flags')
+    const membership: MembershipInfo = record.get('membership')
 
     // Check if password is NULL (user needs to set up password)
     if (member.password === null || member.password === undefined) {
@@ -90,6 +94,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
         lastName: member.lastName,
         roles,
       },
+      membership,
     })
   } finally {
     if (session) {

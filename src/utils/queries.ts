@@ -45,3 +45,23 @@ export const MEMBER_FLAGS_QUERY = `{
   isSheepSeekerForStreamOf:       head([(m)-[:IS_SHEEP_SEEKER_FOR]->(x:Stream)     | {id: x.id, name: x.name}]),
   isFisher:                       m.isFisher
 } AS flags`
+
+/**
+ * CALL subquery to fetch the bacenta, governorship, council and stream
+ * a member belongs to (via BELONGS_TO / HAS relationships).
+ * Must be used AFTER the member is bound to the variable `m`.
+ * Returns: membership { bacenta, governorship, council, stream }
+ */
+export const MEMBER_MEMBERSHIP_CALL = `CALL {
+  WITH m
+  OPTIONAL MATCH (m)-[:BELONGS_TO]->(b:Bacenta)
+  OPTIONAL MATCH (g:Governorship)-[:HAS]->(b)
+  OPTIONAL MATCH (c:Council)-[:HAS]->(g)
+  OPTIONAL MATCH (s:Stream)-[:HAS]->(c)
+  RETURN {
+    bacenta:      CASE WHEN b IS NOT NULL THEN {id: b.id, name: coalesce(b.name, b.stream_name)} ELSE null END,
+    governorship: CASE WHEN g IS NOT NULL THEN {id: g.id, name: g.name} ELSE null END,
+    council:      CASE WHEN c IS NOT NULL THEN {id: c.id, name: c.name} ELSE null END,
+    stream:       CASE WHEN s IS NOT NULL THEN {id: s.id, name: s.name} ELSE null END
+  } AS membership
+}`
