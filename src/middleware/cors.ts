@@ -115,20 +115,32 @@ export const corsMiddleware = async (
 
     const allowed = !!(origin && isAllowedOrigin(origin, origins, environment))
 
+    // DEV ONLY: some local clients (and certain browser extensions / proxies)
+    // send a cross-origin request WITHOUT an Origin header. Then `allowed` is
+    // false and we'd omit Access-Control-Allow-Origin entirely — which the
+    // browser reports as a CORS failure even though the request succeeded.
+    // In production this stays false, so such requests are denied.
+    const devNoOriginFallback = !origin && environment !== 'production'
+
     console.log('[CORS DEBUG]', {
       method: req.method,
       path: req.path,
       origin: origin ?? '(none)',
       environment,
       allowed,
+      devNoOriginFallback,
       cachedOrigins: [...origins],
     })
 
-    if (allowed) {
+    if (allowed && origin) {
+      // Specific allowed origin — safe to advertise credentials support.
       res.header('Access-Control-Allow-Origin', origin)
+      res.header('Access-Control-Allow-Credentials', 'true')
+    } else if (devNoOriginFallback) {
+      // NOTE: '*' MUST NOT be combined with Allow-Credentials per the CORS spec.
+      res.header('Access-Control-Allow-Origin', '*')
     }
     res.header('Vary', 'Origin')
-    res.header('Access-Control-Allow-Credentials', 'true')
     res.header(
       'Access-Control-Allow-Methods',
       'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
