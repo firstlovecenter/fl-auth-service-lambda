@@ -78,6 +78,13 @@ const DEFAULT_SIGN_OPTIONS: SignOptions = {
   expiresIn: '30m',
 }
 
+/**
+ * Refresh-token lifetime, in seconds (7 days). Single source of truth shared by
+ * the signed JWT (below) and the httpOnly cookie's Max-Age (utils/cookies.ts)
+ * so the two can never drift (SYN-173).
+ */
+export const REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60
+
 export const signJWT = async (
   payload: Record<string, unknown>,
   expiresIn: string | number = '30m',
@@ -93,7 +100,9 @@ export const signRefreshToken = async (
   payload: Record<string, unknown>,
 ): Promise<string> => {
   const secret = await getJWTSecret()
-  return jwt.sign(payload, secret, { expiresIn: '7d' } as any)
+  return jwt.sign(payload, secret, {
+    expiresIn: REFRESH_TOKEN_TTL_SECONDS,
+  } as any)
 }
 
 export const verifyJWT = async (token: string): Promise<JwtPayload> => {
