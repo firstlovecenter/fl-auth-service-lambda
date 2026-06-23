@@ -20,6 +20,11 @@ interface Secrets {
   ENVIRONMENT: string
   FLC_NOTIFY_KEY: string
   SYNAGO_APP_URL: string
+  // SYN-176: optional overrides for the access-token `iss` / `aud` claims. When
+  // absent, the code defaults in utils/auth.ts apply. Kept in lockstep with the
+  // admin API's `JWT_ISSUER` / `JWT_AUDIENCE` secrets so the API can pin them.
+  JWT_ISSUER?: string
+  JWT_AUDIENCE?: string
 }
 
 let secretsCache: Secrets | null = null
