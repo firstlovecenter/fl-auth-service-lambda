@@ -9,10 +9,14 @@ import {
   extractChurchScopes,
 } from '../utils/roles'
 import { MEMBER_FLAGS_QUERY } from '../utils/queries'
+import { readRefreshCookie } from '../utils/cookies'
 import type { JWTPayload } from '../types'
 
+// SYN-173: the refresh token arrives in the httpOnly cookie. The body field is
+// still accepted (optional) so older web clients keep working during rollout;
+// the body fallback is removed in SYN-188 once all clients are migrated.
 const refreshTokenSchema = z.object({
-  refreshToken: z.string().min(1, 'Refresh token is required'),
+  refreshToken: z.string().min(1).optional(),
 })
 
 export const refreshToken = asyncHandler(
@@ -20,9 +24,23 @@ export const refreshToken = asyncHandler(
     let session
 
     try {
-      const { refreshToken } = refreshTokenSchema.parse(req.body)
+      const { refreshToken: bodyToken } = refreshTokenSchema.parse(
+        req.body ?? {},
+      )
+      const token = readRefreshCookie(req) ?? bodyToken
 
-      const decoded = (await verifyJWT(refreshToken)) as JWTPayload
+      if (!token) {
+        throw new ApiError(401, 'No refresh token provided')
+      }
+
+      // A rejected/expired cookie must surface as 401 (not 500) — the web
+      // client only clears the session and shows login on a 401 (SYN-173).
+      let decoded: JWTPayload
+      try {
+        decoded = (await verifyJWT(token)) as JWTPayload
+      } catch {
+        throw new ApiError(401, 'Invalid or expired refresh token')
+      }
 
       session = getSession()
 

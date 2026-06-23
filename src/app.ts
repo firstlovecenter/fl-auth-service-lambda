@@ -10,6 +10,7 @@ import { initializeDB } from './db/neo4j'
 // Route imports
 import { signup } from './routes/signup'
 import { login } from './routes/login'
+import { logout } from './routes/logout'
 import { verify } from './routes/verify'
 import { refreshToken } from './routes/refreshToken'
 import { setupPassword } from './routes/setupPassword'
@@ -71,11 +72,20 @@ app.post('/auth/signup', signup)
 
 /**
  * POST /auth/login
- * Authenticate user and get tokens
+ * Authenticate user. Sets the refresh token as an httpOnly cookie (SYN-173)
+ * and returns the access token in the body.
  * Body: { email, password }
- * Returns: { accessToken, refreshToken, user, roles }
+ * Returns: { tokens: { accessToken, refreshToken }, user, membership }
+ *   (refreshToken in the body is transitional — see SYN-173 follow-up.)
  */
 app.post('/auth/login', login)
+
+/**
+ * POST /auth/logout
+ * Clear the httpOnly refresh-token cookie (SYN-173)
+ * Returns: { message }
+ */
+app.post('/auth/logout', logout)
 
 /**
  * POST /auth/verify
@@ -87,8 +97,9 @@ app.post('/auth/verify', verify)
 
 /**
  * POST /auth/refresh-token
- * Get new access token using refresh token
- * Body: { refreshToken }
+ * Get a new access token. Reads the refresh token from the httpOnly cookie
+ * (SYN-173), falling back to a body `refreshToken` for older clients during
+ * rollout — see SYN-173 follow-up.
  * Returns: { accessToken }
  */
 app.post('/auth/refresh-token', refreshToken)
@@ -97,7 +108,7 @@ app.post('/auth/refresh-token', refreshToken)
  * POST /auth/setup-password
  * Complete password setup for users migrated from legacy systems
  * Body: { setup_token, new_password, confirm_password }
- * Returns: { accessToken, refreshToken, user }
+ * Returns: { message, user }
  */
 app.post('/auth/setup-password', setupPassword)
 
