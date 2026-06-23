@@ -2,7 +2,22 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
 import type { SignOptions, JwtPayload } from 'jsonwebtoken'
-import { getSecret } from './secrets'
+import { getSecret, loadSecrets } from './secrets'
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Access-token claim pins (SYN-176)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Default `iss` (who minted the token) and `aud` (who the token is for) stamped
+ * onto every access token. The admin API validates these against its own
+ * `JWT_ISSUER` / `JWT_AUDIENCE` secrets, so a token minted with a shared
+ * `JWT_SECRET` but for a different audience is rejected. Overridable via the
+ * `JWT_ISSUER` / `JWT_AUDIENCE` secrets — but the values MUST stay in lockstep
+ * with the API or every authenticated request 401s.
+ */
+export const ACCESS_TOKEN_ISSUER = 'fl-auth-service'
+export const ACCESS_TOKEN_AUDIENCE = 'fl-admin-portal'
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Cached secrets
@@ -10,6 +25,8 @@ import { getSecret } from './secrets'
 
 let cachedJWTSecret: string | null = null
 let cachedPepper: string | null = null
+let cachedIssuer: string | null = null
+let cachedAudience: string | null = null
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Get secrets (cached)
@@ -51,6 +68,27 @@ const getPepper = async (): Promise<string> => {
   return cachedPepper
 }
 
+/**
+ * Resolve the access-token `iss` / `aud`, preferring the optional secrets and
+ * falling back to the code defaults. Read via `loadSecrets()` (not `getSecret`,
+ * which throws on absent keys) because these overrides are optional.
+ */
+const getIssuer = async (): Promise<string> => {
+  if (cachedIssuer === null) {
+    const secrets = await loadSecrets()
+    cachedIssuer = secrets.JWT_ISSUER || ACCESS_TOKEN_ISSUER
+  }
+  return cachedIssuer
+}
+
+const getAudience = async (): Promise<string> => {
+  if (cachedAudience === null) {
+    const secrets = await loadSecrets()
+    cachedAudience = secrets.JWT_AUDIENCE || ACCESS_TOKEN_AUDIENCE
+  }
+  return cachedAudience
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Password Hashing (with pepper)
 // ──────────────────────────────────────────────────────────────────────────────
@@ -90,9 +128,16 @@ export const signJWT = async (
   expiresIn: string | number = '30m',
 ): Promise<string> => {
   const secret = await getJWTSecret()
+  const issuer = await getIssuer()
+  const audience = await getAudience()
+  // SYN-176: stamp `iss` / `aud` so the admin API can verify the token was
+  // minted by this service *for it* — a valid signature from the shared
+  // `JWT_SECRET` is no longer sufficient on its own.
   return jwt.sign(payload, secret, {
     expiresIn,
     algorithm: 'HS256', // Explicitly set algorithm
+    issuer,
+    audience,
   } as any)
 }
 
