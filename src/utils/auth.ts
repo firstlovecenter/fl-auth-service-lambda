@@ -44,17 +44,20 @@ const getJWTSecret = async (): Promise<string> => {
       throw new Error('JWT_SECRET is not a valid string')
     }
 
-    const digest = crypto
+    // SECURITY (SYN-189): log only a short hash prefix so we can confirm every
+    // Lambda instance loaded the same secret (lockstep rotation). Do not log the
+    // full digest or the secret length — both are unnecessary disclosures.
+    const digestPrefix = crypto
       .createHash('sha256')
       .update(cachedJWTSecret)
       .digest('hex')
+      .slice(0, 8)
     console.log(
       JSON.stringify({
         timestamp: new Date().toISOString(),
         level: 'INFO',
         message: 'JWT_SECRET loaded',
-        secretHash: digest,
-        secretLength: cachedJWTSecret.length,
+        secretHashPrefix: digestPrefix,
       }),
     )
   }

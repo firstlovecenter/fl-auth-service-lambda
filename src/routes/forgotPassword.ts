@@ -128,10 +128,12 @@ export const forgotPassword = asyncHandler(
             '24h',
           )
 
+          // SECURITY: never log the reset token itself — it grants password
+          // reset for ~24h and anyone with log access could hijack the account
+          // (SYN-189). Log only non-sensitive correlation fields.
           console.log('[ForgotPassword] Reset token generated:', {
             email,
             userId,
-            token: resetToken,
             expiresIn: '24h',
             timestamp: new Date().toISOString(),
           })

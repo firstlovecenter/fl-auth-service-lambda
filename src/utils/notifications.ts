@@ -65,10 +65,8 @@ export const sendEmail = async (payload: EmailPayload): Promise<boolean> => {
     const secretKey = await getNotificationSecretKey()
 
     console.log('[Notification] Lambda name:', lambdaName)
-    console.log(
-      '[Notification] Secret key (first 10 chars):',
-      secretKey.substring(0, 10) + '...',
-    )
+    // SECURITY (SYN-189): do not log any portion of the notify secret key.
+    console.log('[Notification] Secret key loaded:', Boolean(secretKey))
 
     // Construct the notification event
     const event: NotificationEvent = {
