@@ -27,7 +27,7 @@ export const setupPassword = asyncHandler(
             level: 'ERROR',
             message: 'JWT verification failed',
             error: error instanceof Error ? error.message : String(error),
-            token: token.substring(0, 20) + '...', // Log first 20 chars for debugging
+            // SECURITY: do not log the token (even a prefix) — SYN-189.
           }),
         )
         throw new ApiError(

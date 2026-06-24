@@ -9,6 +9,18 @@ export interface User {
   updatedAt: Date
 }
 
+export interface ChurchNodeInfo {
+  id: string
+  name: string
+}
+
+export interface MembershipInfo {
+  bacenta: ChurchNodeInfo | null
+  governorship: ChurchNodeInfo | null
+  council: ChurchNodeInfo | null
+  stream: ChurchNodeInfo | null
+}
+
 export interface JWTPayload {
   userId: string
   email: string

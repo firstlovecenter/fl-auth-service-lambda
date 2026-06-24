@@ -26,11 +26,14 @@ describe('Auth Flows: Member to User Migration', () => {
 
   afterAll(async () => {
     // Clean up
-    await session.run(`
+    await session.run(
+      `
       MATCH (u:User {email: $pattern})
       WHERE u.email STARTS WITH 'test-auth-'
       DETACH DELETE u
-    `, { pattern: 'test-auth-' })
+    `,
+      { pattern: 'test-auth-' },
+    )
 
     await session.close()
     await driver.close()
@@ -39,7 +42,8 @@ describe('Auth Flows: Member to User Migration', () => {
   describe('Login flow with NULL password', () => {
     test('should reject login with NULL password and return forgot password message', async () => {
       // Create user with NULL password (migrated user)
-      await session.run(`
+      await session.run(
+        `
         CREATE (u:Member:User {
           id: randomUUID(),
           email: $email,
@@ -48,23 +52,29 @@ describe('Auth Flows: Member to User Migration', () => {
           lastName: 'User',
           createdAt: datetime()
         })
-      `, { email: 'test-auth-nullpass@example.com' })
+      `,
+        { email: 'test-auth-nullpass@example.com' },
+      )
 
       // Simulate login check
-      const result = await session.run(`
+      const result = await session.run(
+        `
         MATCH (m:User {email: $email})
         RETURN m { .id, .firstName, .lastName, .email, .password } AS member
-      `, { email: 'test-auth-nullpass@example.com' })
+      `,
+        { email: 'test-auth-nullpass@example.com' },
+      )
 
       expect(result.records.length).toBe(1)
       const member = result.records[0].get('member')
-      
+
       // Verify password is NULL
       expect(member.password).toBeNull()
-      
+
       // Frontend should see this error
       expect({
-        error: "Password not set. Please use 'Forgot Password' to set up your password.",
+        error:
+          "Password not set. Please use 'Forgot Password' to set up your password.",
         statusCode: 401,
         requiresPasswordSetup: true,
       }).toBeDefined()
@@ -72,9 +82,10 @@ describe('Auth Flows: Member to User Migration', () => {
 
     test('should query User label successfully', async () => {
       const email = 'test-auth-queryuser@example.com'
-      
+
       // Create user with User label
-      await session.run(`
+      await session.run(
+        `
         CREATE (u:Member:User {
           id: randomUUID(),
           email: $email,
@@ -83,16 +94,21 @@ describe('Auth Flows: Member to User Migration', () => {
           lastName: 'Test',
           createdAt: datetime()
         })
-      `, {
-        email,
-        password: await hashPassword('TestPassword123!'),
-      })
+      `,
+        {
+          email,
+          password: await hashPassword('TestPassword123!'),
+        },
+      )
 
       // Query using User label (not Member)
-      const result = await session.run(`
+      const result = await session.run(
+        `
         MATCH (u:User {email: $email})
         RETURN u.id as id, u.email as email, u.password as password
-      `, { email })
+      `,
+        { email },
+      )
 
       expect(result.records.length).toBe(1)
       expect(result.records[0].get('email')).toBe(email)
@@ -103,9 +119,10 @@ describe('Auth Flows: Member to User Migration', () => {
   describe('Signup creates User label', () => {
     test('should create user with both Member:User labels', async () => {
       const email = 'test-auth-signup@example.com'
-      
+
       // Simulate signup creation
-      const result = await session.run(`
+      const result = await session.run(
+        `
         CREATE (person:Member:User {
           id: randomUUID(),
           email: $email,
@@ -116,10 +133,12 @@ describe('Auth Flows: Member to User Migration', () => {
           updatedAt: datetime()
         })
         RETURN labels(person) as labels, person.id as id, person.email as email
-      `, {
-        email,
-        password: await hashPassword('NewPassword123!'),
-      })
+      `,
+        {
+          email,
+          password: await hashPassword('NewPassword123!'),
+        },
+      )
 
       const labels = result.records[0].get('labels')
       expect(labels).toContain('Member')
@@ -129,25 +148,31 @@ describe('Auth Flows: Member to User Migration', () => {
 
     test('should prevent duplicate email signup', async () => {
       const email = 'test-auth-dup@example.com'
-      
+
       // Create first user
-      await session.run(`
+      await session.run(
+        `
         CREATE (u:Member:User {
           id: randomUUID(),
           email: $email,
           password: $password,
           createdAt: datetime()
         })
-      `, {
-        email,
-        password: await hashPassword('Password123!'),
-      })
+      `,
+        {
+          email,
+          password: await hashPassword('Password123!'),
+        },
+      )
 
       // Attempt to create duplicate
-      const checkResult = await session.run(`
+      const checkResult = await session.run(
+        `
         MATCH (u) WHERE (u:Member OR u:User) AND u.email = $email
         RETURN u LIMIT 1
-      `, { email })
+      `,
+        { email },
+      )
 
       expect(checkResult.records.length).toBe(1)
       // Frontend should reject with "email already exists" error
@@ -158,38 +183,47 @@ describe('Auth Flows: Member to User Migration', () => {
     test('should update password for User with NULL password', async () => {
       const email = 'test-auth-setup@example.com'
       const userId = 'test-id-setup-' + Date.now()
-      
+
       // Create migrated user with NULL password
-      await session.run(`
+      await session.run(
+        `
         CREATE (u:Member:User {
           id: $userId,
           email: $email,
           password: NULL,
           createdAt: datetime()
         })
-      `, { userId, email })
+      `,
+        { userId, email },
+      )
 
       // Simulate password setup
       const newPassword = await hashPassword('NewSetupPassword123!')
-      const setupResult = await session.run(`
+      const setupResult = await session.run(
+        `
         MATCH (u:User {id: $userId, email: $email})
         WHERE u.password IS NULL
         SET u.password = $hashedPassword,
             u.updatedAt = datetime()
         RETURN u.id as id, u.email as email
-      `, {
-        userId,
-        email,
-        hashedPassword: newPassword,
-      })
+      `,
+        {
+          userId,
+          email,
+          hashedPassword: newPassword,
+        },
+      )
 
       expect(setupResult.records.length).toBe(1)
-      
+
       // Verify password is now set
-      const verifyResult = await session.run(`
+      const verifyResult = await session.run(
+        `
         MATCH (u:User {id: $userId})
         RETURN u.password as password
-      `, { userId })
+      `,
+        { userId },
+      )
 
       expect(verifyResult.records[0].get('password')).not.toBeNull()
     })
@@ -197,27 +231,33 @@ describe('Auth Flows: Member to User Migration', () => {
     test('should reject setup if password already set', async () => {
       const email = 'test-auth-alreadysetup@example.com'
       const userId = 'test-id-already-' + Date.now()
-      
+
       // Create user with password already set
-      await session.run(`
+      await session.run(
+        `
         CREATE (u:Member:User {
           id: $userId,
           email: $email,
           password: $password,
           createdAt: datetime()
         })
-      `, {
-        userId,
-        email,
-        password: await hashPassword('ExistingPassword123!'),
-      })
+      `,
+        {
+          userId,
+          email,
+          password: await hashPassword('ExistingPassword123!'),
+        },
+      )
 
       // Attempt password setup
-      const setupResult = await session.run(`
+      const setupResult = await session.run(
+        `
         MATCH (u:User {id: $userId, email: $email})
         WHERE u.password IS NULL
         RETURN u
-      `, { userId, email })
+      `,
+        { userId, email },
+      )
 
       expect(setupResult.records.length).toBe(0)
       // Should return "User not found or password already set" error
@@ -227,9 +267,10 @@ describe('Auth Flows: Member to User Migration', () => {
   describe('Verify and refresh token flows', () => {
     test('should verify user querying User label', async () => {
       const email = 'test-auth-verify@example.com'
-      
+
       // Create user
-      const createResult = await session.run(`
+      const createResult = await session.run(
+        `
         CREATE (u:Member:User {
           id: randomUUID(),
           email: $email,
@@ -239,18 +280,23 @@ describe('Auth Flows: Member to User Migration', () => {
           createdAt: datetime()
         })
         RETURN u.id as userId
-      `, {
-        email,
-        password: await hashPassword('TestPassword123!'),
-      })
+      `,
+        {
+          email,
+          password: await hashPassword('TestPassword123!'),
+        },
+      )
 
       const userId = createResult.records[0].get('userId')
 
       // Simulate token verification
-      const verifyResult = await session.run(`
+      const verifyResult = await session.run(
+        `
         MATCH (u:User {id: $userId})
         RETURN u.id as id, u.email as email, u.firstName as firstName, u.lastName as lastName
-      `, { userId })
+      `,
+        { userId },
+      )
 
       expect(verifyResult.records.length).toBe(1)
       expect(verifyResult.records[0].get('email')).toBe(email)
@@ -258,9 +304,10 @@ describe('Auth Flows: Member to User Migration', () => {
 
     test('should refresh token querying User label', async () => {
       const email = 'test-auth-refresh@example.com'
-      
+
       // Create user
-      const createResult = await session.run(`
+      const createResult = await session.run(
+        `
         CREATE (u:Member:User {
           id: randomUUID(),
           email: $email,
@@ -268,18 +315,23 @@ describe('Auth Flows: Member to User Migration', () => {
           createdAt: datetime()
         })
         RETURN u.id as userId
-      `, {
-        email,
-        password: await hashPassword('TestPassword123!'),
-      })
+      `,
+        {
+          email,
+          password: await hashPassword('TestPassword123!'),
+        },
+      )
 
       const userId = createResult.records[0].get('userId')
 
       // Simulate refresh token
-      const refreshResult = await session.run(`
+      const refreshResult = await session.run(
+        `
         MATCH (u:User {id: $userId})
         RETURN u.id as id, u.email as email
-      `, { userId })
+      `,
+        { userId },
+      )
 
       expect(refreshResult.records.length).toBe(1)
       expect(refreshResult.records[0].get('email')).toBe(email)
@@ -289,9 +341,10 @@ describe('Auth Flows: Member to User Migration', () => {
   describe('Delete account flow', () => {
     test('should delete User node completely', async () => {
       const email = 'test-auth-delete@example.com'
-      
+
       // Create user
-      const createResult = await session.run(`
+      const createResult = await session.run(
+        `
         CREATE (u:Member:User {
           id: randomUUID(),
           email: $email,
@@ -299,32 +352,214 @@ describe('Auth Flows: Member to User Migration', () => {
           createdAt: datetime()
         })
         RETURN u.id as userId
-      `, {
-        email,
-        password: await hashPassword('TestPassword123!'),
-      })
+      `,
+        {
+          email,
+          password: await hashPassword('TestPassword123!'),
+        },
+      )
 
       const userId = createResult.records[0].get('userId')
 
       // Verify user exists
-      let checkResult = await session.run(`
+      let checkResult = await session.run(
+        `
         MATCH (u:User {id: $userId})
         RETURN u
-      `, { userId })
+      `,
+        { userId },
+      )
       expect(checkResult.records.length).toBe(1)
 
       // Delete user
-      await session.run(`
+      await session.run(
+        `
         MATCH (u:User {id: $userId})
         DETACH DELETE u
-      `, { userId })
+      `,
+        { userId },
+      )
 
       // Verify deleted
-      checkResult = await session.run(`
+      checkResult = await session.run(
+        `
         MATCH (u:User {id: $userId})
         RETURN u
-      `, { userId })
+      `,
+        { userId },
+      )
       expect(checkResult.records.length).toBe(0)
+    })
+  })
+
+  describe('Membership info on login', () => {
+    test('should return null membership when user has no Bacenta', async () => {
+      const email = 'test-auth-nomembership@example.com'
+
+      await session.run(
+        `
+        CREATE (u:Member:User {
+          id: randomUUID(),
+          email: $email,
+          password: $password,
+          firstName: 'No',
+          lastName: 'Church',
+          createdAt: datetime()
+        })
+      `,
+        {
+          email,
+          password: await hashPassword('TestPassword123!'),
+        },
+      )
+
+      const result = await session.run(
+        `
+        MATCH (m:User:Member)
+        WHERE m.email = $email
+        WITH m LIMIT 1
+        CALL {
+          WITH m
+          OPTIONAL MATCH (m)-[:BELONGS_TO]->(b:Bacenta)
+          OPTIONAL MATCH (g:Governorship)-[:HAS]->(b)
+          OPTIONAL MATCH (c:Council)-[:HAS]->(g)
+          OPTIONAL MATCH (s:Stream)-[:HAS]->(c)
+          RETURN {
+            bacenta:      CASE WHEN b IS NOT NULL THEN {id: b.id, name: coalesce(b.name, b.stream_name)} ELSE null END,
+            governorship: CASE WHEN g IS NOT NULL THEN {id: g.id, name: g.name} ELSE null END,
+            council:      CASE WHEN c IS NOT NULL THEN {id: c.id, name: c.name} ELSE null END,
+            stream:       CASE WHEN s IS NOT NULL THEN {id: s.id, name: s.name} ELSE null END
+          } AS membership
+        }
+        RETURN membership
+      `,
+        { email },
+      )
+
+      expect(result.records.length).toBe(1)
+      const membership = result.records[0].get('membership')
+      expect(membership.bacenta).toBeNull()
+      expect(membership.governorship).toBeNull()
+      expect(membership.council).toBeNull()
+      expect(membership.stream).toBeNull()
+    })
+
+    test('should return full membership hierarchy when user belongs to a Bacenta', async () => {
+      const email = 'test-auth-withmembership@example.com'
+      const streamId = 'test-stream-' + Date.now()
+      const councilId = 'test-council-' + Date.now()
+      const govId = 'test-gov-' + Date.now()
+      const bacentaId = 'test-bacenta-' + Date.now()
+
+      // Create a minimal church hierarchy and a member who belongs to the bacenta
+      await session.run(
+        `
+        CREATE (s:Stream  {id: $streamId,  name: 'Test Stream'})
+        CREATE (c:Council {id: $councilId, name: 'Test Council'})
+        CREATE (g:Governorship {id: $govId, name: 'Test Governorship'})
+        CREATE (b:Bacenta  {id: $bacentaId, name: 'Test Bacenta'})
+        CREATE (s)-[:HAS]->(c)
+        CREATE (c)-[:HAS]->(g)
+        CREATE (g)-[:HAS]->(b)
+        CREATE (u:Member:User {
+          id: randomUUID(),
+          email: $email,
+          password: $password,
+          firstName: 'Church',
+          lastName: 'Member',
+          createdAt: datetime()
+        })-[:BELONGS_TO]->(b)
+      `,
+        {
+          streamId,
+          councilId,
+          govId,
+          bacentaId,
+          email,
+          password: await hashPassword('TestPassword123!'),
+        },
+      )
+
+      const result = await session.run(
+        `
+        MATCH (m:User:Member)
+        WHERE m.email = $email
+        WITH m LIMIT 1
+        CALL {
+          WITH m
+          OPTIONAL MATCH (m)-[:BELONGS_TO]->(b:Bacenta)
+          OPTIONAL MATCH (g:Governorship)-[:HAS]->(b)
+          OPTIONAL MATCH (c:Council)-[:HAS]->(g)
+          OPTIONAL MATCH (s:Stream)-[:HAS]->(c)
+          RETURN {
+            bacenta:      CASE WHEN b IS NOT NULL THEN {id: b.id, name: coalesce(b.name, b.stream_name)} ELSE null END,
+            governorship: CASE WHEN g IS NOT NULL THEN {id: g.id, name: g.name} ELSE null END,
+            council:      CASE WHEN c IS NOT NULL THEN {id: c.id, name: c.name} ELSE null END,
+            stream:       CASE WHEN s IS NOT NULL THEN {id: s.id, name: s.name} ELSE null END
+          } AS membership
+        }
+        RETURN membership
+      `,
+        { email },
+      )
+
+      expect(result.records.length).toBe(1)
+      const membership = result.records[0].get('membership')
+
+      expect(membership.bacenta).toMatchObject({
+        id: bacentaId,
+        name: 'Test Bacenta',
+      })
+      expect(membership.governorship).toMatchObject({
+        id: govId,
+        name: 'Test Governorship',
+      })
+      expect(membership.council).toMatchObject({
+        id: councilId,
+        name: 'Test Council',
+      })
+      expect(membership.stream).toMatchObject({
+        id: streamId,
+        name: 'Test Stream',
+      })
+    })
+
+    test('membership should not affect existing user/roles shape', async () => {
+      const email = 'test-auth-rolecheck@example.com'
+
+      await session.run(
+        `
+        CREATE (u:Member:User {
+          id: randomUUID(),
+          email: $email,
+          password: $password,
+          firstName: 'Role',
+          lastName: 'Check',
+          createdAt: datetime()
+        })
+      `,
+        {
+          email,
+          password: await hashPassword('TestPassword123!'),
+        },
+      )
+
+      // The user object still returns the same fields as before
+      const result = await session.run(
+        `
+        MATCH (m:User:Member {email: $email})
+        RETURN m { .id, .firstName, .lastName, .email } AS member
+      `,
+        { email },
+      )
+
+      const member = result.records[0].get('member')
+      expect(member).toHaveProperty('id')
+      expect(member).toHaveProperty('email', email)
+      expect(member).toHaveProperty('firstName', 'Role')
+      expect(member).toHaveProperty('lastName', 'Check')
+      // password is NOT in the projection (backward-compat user shape)
+      expect(member).not.toHaveProperty('password')
     })
   })
 })
