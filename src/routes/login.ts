@@ -82,18 +82,15 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
       email: member.email,
     })
 
-    // SYN-173: the refresh token is delivered as an httpOnly, Secure cookie so
-    // page JavaScript can never read it. It is still echoed in the body below
-    // for backward compatibility while old (service-worker-cached) web clients
-    // roll over; the new client ignores the body token and relies solely on the
-    // cookie. The body copy is removed in SYN-188 once all clients are updated.
+    // SYN-173/188: the refresh token is delivered solely as an httpOnly, Secure
+    // cookie so page JavaScript can never read it. It is never returned in the
+    // response body — the cookie is the sole transport.
     setRefreshCookie(req, res, refreshToken)
 
     res.status(200).json({
       message: 'Login successful',
       tokens: {
         accessToken,
-        refreshToken,
       },
       user: {
         id: member.id,

@@ -1,5 +1,4 @@
 import { Request, Response } from 'express'
-import { z } from 'zod'
 import { getSession } from '../db/neo4j'
 import { signJWT, verifyJWT } from '../utils/auth'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
@@ -12,22 +11,14 @@ import { MEMBER_FLAGS_QUERY } from '../utils/queries'
 import { readRefreshCookie } from '../utils/cookies'
 import type { JWTPayload } from '../types'
 
-// SYN-173: the refresh token arrives in the httpOnly cookie. The body field is
-// still accepted (optional) so older web clients keep working during rollout;
-// the body fallback is removed in SYN-188 once all clients are migrated.
-const refreshTokenSchema = z.object({
-  refreshToken: z.string().min(1).optional(),
-})
-
+// SYN-173/188: the refresh token is read solely from the httpOnly cookie. It is
+// never accepted from the request body — the cookie is the sole transport.
 export const refreshToken = asyncHandler(
   async (req: Request, res: Response) => {
     let session
 
     try {
-      const { refreshToken: bodyToken } = refreshTokenSchema.parse(
-        req.body ?? {},
-      )
-      const token = readRefreshCookie(req) ?? bodyToken
+      const token = readRefreshCookie(req)
 
       if (!token) {
         throw new ApiError(401, 'No refresh token provided')

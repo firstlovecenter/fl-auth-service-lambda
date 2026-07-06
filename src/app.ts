@@ -73,10 +73,10 @@ app.post('/auth/signup', signup)
 /**
  * POST /auth/login
  * Authenticate user. Sets the refresh token as an httpOnly cookie (SYN-173)
- * and returns the access token in the body.
+ * and returns the access token in the body. The refresh token is never
+ * returned in the body — the cookie is the sole transport (SYN-188).
  * Body: { email, password }
- * Returns: { tokens: { accessToken, refreshToken }, user, membership }
- *   (refreshToken in the body is transitional — see SYN-173 follow-up.)
+ * Returns: { tokens: { accessToken }, user, membership }
  */
 app.post('/auth/login', login)
 
@@ -97,9 +97,8 @@ app.post('/auth/verify', verify)
 
 /**
  * POST /auth/refresh-token
- * Get a new access token. Reads the refresh token from the httpOnly cookie
- * (SYN-173), falling back to a body `refreshToken` for older clients during
- * rollout — see SYN-173 follow-up.
+ * Get a new access token. Reads the refresh token solely from the httpOnly
+ * cookie (SYN-173/188) — no request body is used.
  * Returns: { accessToken }
  */
 app.post('/auth/refresh-token', refreshToken)

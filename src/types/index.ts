@@ -43,7 +43,3 @@ export interface LoginRequest {
 export interface VerifyRequest {
   token: string
 }
-
-export interface RefreshTokenRequest {
-  refreshToken: string
-}
