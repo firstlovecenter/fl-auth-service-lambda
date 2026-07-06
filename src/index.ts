@@ -9,4 +9,5 @@ import app from './app'
  */
 const handler = serverless(app)
 
+// Deploy marker: retrigger CI/CD
 export { handler }
