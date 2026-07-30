@@ -25,6 +25,13 @@ interface Secrets {
   // admin API's `JWT_ISSUER` / `JWT_AUDIENCE` secrets so the API can pin them.
   JWT_ISSUER?: string
   JWT_AUDIENCE?: string
+  // External SSO (OAuth2 code flow): RS256 key pair used to sign identity
+  // tokens for external apps (camp-app, etc). Optional — absent until seeded,
+  // at which point the /auth/external/* endpoints and JWKS become live.
+  // Never required at startup so existing deploys are unaffected.
+  EXT_RS256_PRIVATE_KEY?: string
+  EXT_RS256_PUBLIC_KEY?: string
+  EXT_RS256_KID?: string
 }
 
 let secretsCache: Secrets | null = null

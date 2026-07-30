@@ -43,3 +43,19 @@ export interface LoginRequest {
 export interface VerifyRequest {
   token: string
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// External SSO (OAuth2 authorization-code flow)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/** Claims on the RS256-signed identity token issued to external apps. Never
+ * add roles or internal fields here — external apps get identity only. */
+export interface ExternalJWTPayload {
+  iss: string
+  aud: string
+  sub: string
+  email: string
+  name: string
+  iat?: number
+  exp?: number
+}
