@@ -1,7 +1,8 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSession } from '../db/neo4j'
-import { comparePassword, signJWT, signRefreshToken } from '../utils/auth'
+import { signJWT, signRefreshToken } from '../utils/auth'
+import { verifyMemberPassword } from '../utils/authenticate'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
 import {
   ROLES_CLAIM,
@@ -47,19 +48,9 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     const flags = record.get('flags')
     const membership: MembershipInfo = record.get('membership')
 
-    // Check if password is NULL (user needs to set up password)
-    if (member.password === null || member.password === undefined) {
-      throw new ApiError(
-        401,
-        "Password not set. Please use 'Forgot Password' to set up your password.",
-        { requiresPasswordSetup: true },
-      )
-    }
-
-    const passwordMatch = await comparePassword(password, member.password)
-    if (!passwordMatch) {
-      throw new ApiError(401, 'Invalid email or password')
-    }
+    // SYN: shared with the external-SSO login (utils/authenticate.ts) so both
+    // apply the exact same NULL-password / bcrypt-compare / error semantics.
+    await verifyMemberPassword(member.password, password)
 
     const roles = deriveRolesFromFlags(flags)
     const churchScopes = extractChurchScopes(flags)
