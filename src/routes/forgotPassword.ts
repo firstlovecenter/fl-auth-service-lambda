@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
+import neo4j from 'neo4j-driver'
 import { getSession } from '../db/neo4j'
 import { signJWT } from '../utils/auth'
 import { sendPasswordSetupEmail } from '../utils/notifications'
@@ -10,6 +11,12 @@ import {
   getClientIP,
   logSecurityEvent,
 } from '../utils/security'
+
+// The in-memory limiter is per Lambda container, so it cannot cap the emails one
+// address receives: concurrent requests land on different containers. The count
+// lives on the User node instead, which every container sees.
+export const MAX_RESET_EMAILS_PER_WINDOW = 3
+export const RESET_EMAIL_WINDOW_MS = 60 * 60 * 1000
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -46,28 +53,6 @@ export const forgotPassword = asyncHandler(
       // RATE LIMITING: Prevent brute force / enumeration attacks
       // ========================================================================
 
-      // Rate limit per email
-      const emailRateLimit = checkRateLimit(`forgot:${email}`, {
-        maxAttempts: 3, // Max 3 reset requests per email
-        windowMs: 60 * 60 * 1000, // per 1 hour
-        blockDurationMs: 60 * 60 * 1000, // block for 1 hour
-      })
-
-      if (!emailRateLimit.allowed) {
-        logSecurityEvent('forgot_password_rate_limit_email', {
-          email,
-          clientIP,
-          retryAfter: emailRateLimit.retryAfter,
-        })
-        // Still return success to not leak rate limit info
-        // But add delay to match success case
-        await constantTimeDelay(150, 300)
-        return res.status(200).json({
-          message:
-            'If an account exists with this email, you will receive a password reset link.',
-        })
-      }
-
       // Rate limit per IP
       const ipRateLimit = checkRateLimit(`forgot:ip:${clientIP}`, {
         maxAttempts: 10, // Max 10 requests per IP
@@ -97,8 +82,12 @@ export const forgotPassword = asyncHandler(
 
       const result = await session.run(
         `MATCH (m:User:Member {email: $email})
-         RETURN m.id as id, m.auth_id as auth_id, m.firstName as firstName`,
-        { email },
+         WITH m, coalesce(m.passwordResetWindowStart, 0) <= $now - $windowMs AS expired
+         SET m.passwordResetCount = CASE WHEN expired THEN 1 ELSE coalesce(m.passwordResetCount, 0) + 1 END,
+             m.passwordResetWindowStart = CASE WHEN expired THEN $now ELSE m.passwordResetWindowStart END
+         RETURN m.id as id, m.auth_id as auth_id, m.firstName as firstName,
+                m.passwordResetCount as resetCount`,
+        { email, now: neo4j.int(Date.now()), windowMs: neo4j.int(RESET_EMAIL_WINDOW_MS) },
       )
 
       // ========================================================================
@@ -106,14 +95,24 @@ export const forgotPassword = asyncHandler(
       // ========================================================================
       // Always add consistent delay so response time doesn't leak info
       // about whether user exists or not
-      const delayNeeded = await constantTimeDelay(150, 300)
+      await constantTimeDelay(150, 300)
 
       // ========================================================================
       // EMAIL SENDING: Only if user exists
       // ========================================================================
 
-      if (result.records.length > 0) {
-        const record = result.records[0]
+      const record = result.records[0]
+      const resetCount = record
+        ? neo4j.integer.toNumber(record.get('resetCount'))
+        : 0
+
+      if (resetCount > MAX_RESET_EMAILS_PER_WINDOW) {
+        logSecurityEvent('forgot_password_rate_limit_email', {
+          email,
+          clientIP,
+          resetCount,
+        })
+      } else if (record) {
         const userId = record.get('id') ?? record.get('auth_id')
         const firstName = record.get('firstName')
 
