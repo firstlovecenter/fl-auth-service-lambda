@@ -18,6 +18,10 @@ import { forgotPassword } from './routes/forgotPassword'
 import { resetPassword } from './routes/resetPassword'
 import { deleteAccount } from './routes/deleteAccount'
 import { getChurches } from './routes/getChurches'
+import { jwks } from './routes/jwks'
+import { externalToken } from './routes/external/token'
+import { authorizeGet } from './routes/external/authorize'
+import { authorizeSubmit } from './routes/external/authorizeSubmit'
 
 // Initialize Express app
 const app = express()
@@ -58,6 +62,16 @@ app.get('/health', (req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
   })
 })
+
+// ──────────────────────────────────────────────────────────────────────────────
+// External SSO — JWKS (public, no DB dependency)
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /.well-known/jwks.json
+ * Public key for verifying RS256-signed external-SSO identity tokens.
+ */
+app.get('/.well-known/jwks.json', jwks)
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Authentication Routes
@@ -141,6 +155,39 @@ app.delete('/auth/delete-account', requireBearerAuth, deleteAccount)
  * Body: { email? }
  */
 app.post('/auth/churches', requireBearerAuth, getChurches)
+
+// ──────────────────────────────────────────────────────────────────────────────
+// External SSO (OAuth2 authorization-code flow) — server-to-server
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /auth/external/token
+ * Exchange a single-use authorization code for an RS256-signed identity
+ * token. Server-to-server only (camp-app backend, never the browser).
+ * Body: { code, client_id, client_secret, redirect_uri }
+ */
+app.post('/auth/external/token', externalToken)
+
+// ──────────────────────────────────────────────────────────────────────────────
+// External SSO — user-facing authorize + hosted login page
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /auth/external/authorize
+ * Entry point external apps redirect the browser to. Validates the client
+ * before rendering anything, reuses an existing FLC session if present,
+ * otherwise shows the hosted login page.
+ * Query: client_id, redirect_uri, state, response_type=code
+ */
+app.get('/auth/external/authorize', authorizeGet)
+
+/**
+ * POST /auth/external/authorize/submit
+ * Called by the hosted login page's own JS. Authenticates via the same
+ * logic /auth/login uses, then issues a single-use code.
+ * Body: { client_id, redirect_uri, state, email, password }
+ */
+app.post('/auth/external/authorize/submit', authorizeSubmit)
 
 // ──────────────────────────────────────────────────────────────────────────────
 // 404 Handler
