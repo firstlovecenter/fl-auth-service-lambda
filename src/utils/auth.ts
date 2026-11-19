@@ -153,6 +153,22 @@ export const signRefreshToken = async (
   } as any)
 }
 
+/**
+ * SYN-261 — jsonwebtoken's own rejections of a token the caller sent (expired,
+ * not yet valid, bad signature / malformed) are expected traffic: a reset link
+ * opened after its 24h window, a refresh cookie past its lifetime. The caller
+ * already answers 401, so these log at WARN; anything else (e.g. the secret
+ * failing to load) is a real failure and stays at ERROR.
+ */
+const EXPECTED_TOKEN_REJECTIONS = new Set([
+  'TokenExpiredError',
+  'NotBeforeError',
+  'JsonWebTokenError',
+])
+
+export const isExpectedTokenRejection = (error: unknown): boolean =>
+  error instanceof Error && EXPECTED_TOKEN_REJECTIONS.has(error.name)
+
 export const verifyJWT = async (token: string): Promise<JwtPayload> => {
   try {
     const secret = await getJWTSecret()
@@ -169,7 +185,7 @@ export const verifyJWT = async (token: string): Promise<JwtPayload> => {
     console.log(
       JSON.stringify({
         timestamp: new Date().toISOString(),
-        level: 'ERROR',
+        level: isExpectedTokenRejection(error) ? 'WARN' : 'ERROR',
         message: 'JWT verification error (raw)',
         errorName: error instanceof Error ? error.name : 'Unknown',
         errorMessage: error instanceof Error ? error.message : String(error),
