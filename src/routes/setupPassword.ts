@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
 import { getSession } from '../db/neo4j'
-import { hashPassword, verifyJWT } from '../utils/auth'
+import { hashPassword, verifyJWT, InvalidTokenError } from '../utils/auth'
 import { asyncHandler, ApiError } from '../middleware/errorHandler'
 
 const setupPasswordSchema = z.object({
@@ -21,10 +21,12 @@ export const setupPassword = asyncHandler(
       try {
         decoded = await verifyJWT(token)
       } catch (error) {
+        // SYN-260: an expired or tampered link is the user's to fix (request a
+        // new one), so it logs at WARN; only a server-side failure is ERROR.
         console.log(
           JSON.stringify({
             timestamp: new Date().toISOString(),
-            level: 'ERROR',
+            level: error instanceof InvalidTokenError ? 'WARN' : 'ERROR',
             message: 'JWT verification failed',
             error: error instanceof Error ? error.message : String(error),
             // SECURITY: do not log the token (even a prefix) — SYN-189.

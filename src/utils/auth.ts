@@ -153,6 +153,22 @@ export const signRefreshToken = async (
   } as any)
 }
 
+/**
+ * SYN-260 — thrown by `verifyJWT` when the token itself is rejected (expired,
+ * bad signature, malformed, not yet valid). That is the caller's input, not a
+ * server failure: a user opening a password-reset link after its 24h lifetime,
+ * or a refresh cookie that has outlived its session. Callers use it to log the
+ * refusal at WARN; anything else (e.g. the secret failing to load) stays ERROR.
+ * The message is unchanged so existing callers and clients keep matching it.
+ */
+export class InvalidTokenError extends Error {
+  constructor(public readonly reason: string) {
+    super('Invalid or expired token')
+    this.name = 'InvalidTokenError'
+    Object.setPrototypeOf(this, InvalidTokenError.prototype)
+  }
+}
+
 export const verifyJWT = async (token: string): Promise<JwtPayload> => {
   try {
     const secret = await getJWTSecret()
@@ -166,15 +182,20 @@ export const verifyJWT = async (token: string): Promise<JwtPayload> => {
 
     return decoded as JwtPayload
   } catch (error) {
+    // TokenExpiredError and NotBeforeError both extend JsonWebTokenError.
+    const rejected = error instanceof jwt.JsonWebTokenError
     console.log(
       JSON.stringify({
         timestamp: new Date().toISOString(),
-        level: 'ERROR',
-        message: 'JWT verification error (raw)',
+        level: rejected ? 'WARN' : 'ERROR',
+        message: rejected ? 'JWT rejected' : 'JWT verification error (raw)',
         errorName: error instanceof Error ? error.name : 'Unknown',
         errorMessage: error instanceof Error ? error.message : String(error),
       }),
     )
+    if (rejected) {
+      throw new InvalidTokenError(error.name)
+    }
     throw new Error('Invalid or expired token')
   }
 }
