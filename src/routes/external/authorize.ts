@@ -9,6 +9,10 @@ import { verifyJWT } from '../../utils/auth'
 import { createAuthCode } from '../../utils/authCodes'
 import { renderLoginPage, renderErrorPage } from '../../views/externalLogin'
 import { buildRedirectUrl } from '../../utils/externalRedirect'
+import {
+  isExternalSigningConfigured,
+  logExternalSsoUnavailable,
+} from '../../utils/externalAuth'
 import type { JWTPayload } from '../../types'
 
 const authorizeQuerySchema = z.object({
@@ -30,6 +34,21 @@ const AUTHORIZE_RATE_LIMIT_WINDOW_MS = 60 * 1000
  * risk, so an invalid request always gets an error PAGE, never a redirect.
  */
 export const authorizeGet = asyncHandler(async (req: Request, res: Response) => {
+  // Without signing keys the code we'd issue could never be exchanged for a
+  // token, so stop at an error page (never a redirect — see below) (SYN-256).
+  if (!(await isExternalSigningConfigured())) {
+    logExternalSsoUnavailable(req.path)
+    res
+      .status(503)
+      .send(
+        renderErrorPage(
+          'Sign-in unavailable',
+          'Signing in with your First Love account is not available right now.',
+        ),
+      )
+    return
+  }
+
   const ip = getClientIP(undefined, req.headers as Record<string, any>)
   const rateLimit = await checkExternalRateLimit(
     `external-authorize:${ip}`,
