@@ -24,7 +24,10 @@ export const setupPassword = asyncHandler(
         console.log(
           JSON.stringify({
             timestamp: new Date().toISOString(),
-            level: 'ERROR',
+            // SYN-261: an expired or invalid setup link is the user's to fix
+            // (request a new one) and is answered with a 401 — WARN, not ERROR.
+            // A real failure inside verifyJWT is still logged there at ERROR.
+            level: 'WARN',
             message: 'JWT verification failed',
             error: error instanceof Error ? error.message : String(error),
             // SECURITY: do not log the token (even a prefix) — SYN-189.
