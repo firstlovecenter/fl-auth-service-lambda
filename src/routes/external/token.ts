@@ -10,7 +10,12 @@ import {
   isRedirectUriRegistered,
 } from '../../utils/externalClients'
 import { peekAuthCode, consumeAuthCode } from '../../utils/authCodes'
-import { signExternalJWT } from '../../utils/externalAuth'
+import {
+  signExternalJWT,
+  isExternalSigningConfigured,
+  logExternalSsoUnavailable,
+  EXTERNAL_SSO_UNAVAILABLE_MESSAGE,
+} from '../../utils/externalAuth'
 
 const tokenSchema = z.object({
   code: z.string().min(1, 'code is required'),
@@ -29,6 +34,18 @@ const TOKEN_RATE_LIMIT_WINDOW_MS = 60 * 1000
  */
 export const externalToken = asyncHandler(
   async (req: Request, res: Response) => {
+    // No signing keys here means no token could ever be issued — answer
+    // before burning a code, and without going through the ERROR-logging
+    // error handler (SYN-256).
+    if (!(await isExternalSigningConfigured())) {
+      logExternalSsoUnavailable(req.path)
+      res.status(503).json({
+        error: EXTERNAL_SSO_UNAVAILABLE_MESSAGE,
+        statusCode: 503,
+      })
+      return
+    }
+
     const ip = getClientIP(undefined, req.headers as Record<string, any>)
     const rateLimit = await checkExternalRateLimit(
       `external-token:${ip}`,

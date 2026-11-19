@@ -7,9 +7,15 @@ import { getJWKS } from '../utils/externalAuth'
  * Public, unauthenticated. Serves the RS256 public key external apps use to
  * verify FLC-issued SSO identity tokens. No DB dependency — this route sits
  * outside the /auth prefix, so the Neo4j init middleware never runs for it.
+ *
+ * Where the EXT_RS256_* keys are not configured this serves {"keys":[]}
+ * (SYN-256) — uncached, so verifiers pick the key up as soon as it is seeded.
  */
 export const jwks = asyncHandler(async (req: Request, res: Response) => {
   const document = await getJWKS()
-  res.set('Cache-Control', 'public, max-age=3600')
+  res.set(
+    'Cache-Control',
+    document.keys.length > 0 ? 'public, max-age=3600' : 'no-store',
+  )
   res.status(200).json(document)
 })
