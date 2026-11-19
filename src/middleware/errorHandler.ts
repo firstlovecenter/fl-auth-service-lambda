@@ -20,6 +20,30 @@ export class ApiError extends Error {
 }
 
 /**
+ * SYN-255 — refusals the user can act on (4xx ApiError, validation, bad
+ * token: "password not set", wrong password, no refresh token) are expected
+ * traffic, not server failures. Logging them at ERROR filed a ticket per
+ * refusal and drowned the real failures, so they go to WARN; everything else
+ * (5xx ApiError, database outages, unknown errors) stays at ERROR. Same
+ * approach SYN-253 took for fl-admin-portal's GraphQL API.
+ */
+export const logLevelForError = (error: unknown): 'warn' | 'error' => {
+  if (error instanceof ApiError) {
+    return error.statusCode >= 400 && error.statusCode < 500 ? 'warn' : 'error'
+  }
+  if (error instanceof z.ZodError) return 'warn'
+  if (error instanceof Error) {
+    if (
+      error.name === 'JsonWebTokenError' ||
+      error.message.includes('Invalid or expired token')
+    ) {
+      return 'warn'
+    }
+  }
+  return 'error'
+}
+
+/**
  * Global error handling middleware
  * Production-ready with proper logging and status codes
  */
@@ -31,14 +55,25 @@ export const errorHandler = (
 ) => {
   const requestId = (req.id as string) || 'unknown'
 
-  // Log error with context for debugging
-  console.error(`[${requestId}] Error:`, {
-    name: error instanceof Error ? error.name : 'Unknown',
-    message: error instanceof Error ? error.message : String(error),
-    stack: error instanceof Error ? error.stack : undefined,
-    path: req.path,
-    method: req.method,
-  })
+  // Log error with context for debugging. Expected refusals go to WARN and
+  // carry no stack — it only ever points at the line that threw on purpose.
+  if (logLevelForError(error) === 'warn') {
+    console.warn(`[${requestId}] Refused:`, {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      statusCode: error instanceof ApiError ? error.statusCode : undefined,
+      path: req.path,
+      method: req.method,
+    })
+  } else {
+    console.error(`[${requestId}] Error:`, {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      path: req.path,
+      method: req.method,
+    })
+  }
 
   // Zod validation errors
   if (error instanceof z.ZodError) {

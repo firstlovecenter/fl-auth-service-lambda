@@ -7,6 +7,11 @@ import { getActiveClient, isRedirectUriRegistered } from '../../utils/externalCl
 import { authenticateUser } from '../../utils/authenticate'
 import { createAuthCode } from '../../utils/authCodes'
 import { buildRedirectUrl } from '../../utils/externalRedirect'
+import {
+  isExternalSigningConfigured,
+  logExternalSsoUnavailable,
+  EXTERNAL_SSO_UNAVAILABLE_MESSAGE,
+} from '../../utils/externalAuth'
 
 const submitSchema = z.object({
   client_id: z.string().min(1),
@@ -28,6 +33,17 @@ const LOGIN_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000
  */
 export const authorizeSubmit = asyncHandler(
   async (req: Request, res: Response) => {
+    // Same gate as GET /authorize: don't check a password or issue a code
+    // that can never become a token (SYN-256).
+    if (!(await isExternalSigningConfigured())) {
+      logExternalSsoUnavailable(req.path)
+      res.status(503).json({
+        error: EXTERNAL_SSO_UNAVAILABLE_MESSAGE,
+        statusCode: 503,
+      })
+      return
+    }
+
     const { client_id, redirect_uri, state, email, password } =
       submitSchema.parse(req.body)
 
