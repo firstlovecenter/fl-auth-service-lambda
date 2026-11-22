@@ -153,6 +153,38 @@ export const signRefreshToken = async (
   } as any)
 }
 
+/**
+ * SYN-261 — jsonwebtoken's own rejections of a token the caller sent (expired,
+ * not yet valid, bad signature / malformed) are expected traffic: a reset link
+ * opened after its 24h window, a refresh cookie past its lifetime. The caller
+ * already answers 401, so these log at WARN; anything else (e.g. the secret
+ * failing to load) is a real failure and stays at ERROR.
+ */
+const EXPECTED_TOKEN_REJECTIONS = new Set([
+  'TokenExpiredError',
+  'NotBeforeError',
+  'JsonWebTokenError',
+])
+
+export const isExpectedTokenRejection = (error: unknown): boolean =>
+  error instanceof Error && EXPECTED_TOKEN_REJECTIONS.has(error.name)
+
+/**
+ * SYN-260 — thrown by `verifyJWT` when the token itself is rejected (expired,
+ * bad signature, malformed, not yet valid). That is the caller's input, not a
+ * server failure: a user opening a password-reset link after its 24h lifetime,
+ * or a refresh cookie that has outlived its session. Callers use it to log the
+ * refusal at WARN; anything else (e.g. the secret failing to load) stays ERROR.
+ * The message is unchanged so existing callers and clients keep matching it.
+ */
+export class InvalidTokenError extends Error {
+  constructor(public readonly reason: string) {
+    super('Invalid or expired token')
+    this.name = 'InvalidTokenError'
+    Object.setPrototypeOf(this, InvalidTokenError.prototype)
+  }
+}
+
 export const verifyJWT = async (token: string): Promise<JwtPayload> => {
   try {
     const secret = await getJWTSecret()
@@ -166,15 +198,19 @@ export const verifyJWT = async (token: string): Promise<JwtPayload> => {
 
     return decoded as JwtPayload
   } catch (error) {
+    const rejected = isExpectedTokenRejection(error)
     console.log(
       JSON.stringify({
         timestamp: new Date().toISOString(),
-        level: 'ERROR',
+        level: rejected ? 'WARN' : 'ERROR',
         message: 'JWT verification error (raw)',
         errorName: error instanceof Error ? error.name : 'Unknown',
         errorMessage: error instanceof Error ? error.message : String(error),
       }),
     )
+    if (rejected) {
+      throw new InvalidTokenError((error as Error).name)
+    }
     throw new Error('Invalid or expired token')
   }
 }

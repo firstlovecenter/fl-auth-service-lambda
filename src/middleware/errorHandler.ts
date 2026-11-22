@@ -35,6 +35,8 @@ export const logLevelForError = (error: unknown): 'warn' | 'error' => {
   if (error instanceof Error) {
     if (
       error.name === 'JsonWebTokenError' ||
+      error.name === 'TokenExpiredError' ||
+      error.name === 'NotBeforeError' ||
       error.message.includes('Invalid or expired token')
     ) {
       return 'warn'
