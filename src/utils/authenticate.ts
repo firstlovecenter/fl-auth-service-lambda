@@ -47,11 +47,15 @@ export const authenticateUser = async (
 ): Promise<AuthenticatedMember> => {
   const session = getSession()
   try {
-    const result = await session.run(
-      `MATCH (m:User:Member {email: $email})
-       RETURN m { .id, .firstName, .lastName, .email, .password } AS member
-       LIMIT 1`,
-      { email },
+    // SYN-293: managed read so transient routing-discovery failures retry,
+    // same as /auth/login.
+    const result = await session.executeRead((tx) =>
+      tx.run(
+        `MATCH (m:User:Member {email: $email})
+         RETURN m { .id, .firstName, .lastName, .email, .password } AS member
+         LIMIT 1`,
+        { email },
+      ),
     )
 
     if (result.records.length === 0) {

@@ -4,6 +4,16 @@ import { getSecret } from '../utils/secrets'
 let driver: Driver | null = null
 let isInitialized = false
 
+/**
+ * SYN-293 — budget for the driver's managed-transaction retries
+ * (session.executeRead/executeWrite). When prod Neo4j restarts or drops a
+ * frozen Lambda container's connections, routing discovery fails with
+ * ServiceUnavailable ("No routing servers available") for a few seconds;
+ * managed transactions retry that with backoff, a bare session.run does not.
+ * Kept well under API Gateway's 29s limit so a longer outage still answers.
+ */
+export const MAX_TRANSACTION_RETRY_TIME_MS = 15000
+
 export async function initializeDB(): Promise<Driver> {
   if (isInitialized && driver) {
     return driver
@@ -37,6 +47,7 @@ export async function initializeDB(): Promise<Driver> {
           trust: 'TRUST_ALL_CERTIFICATES' as const,
           connectionTimeout: 30000,
           maxConnectionPoolSize: 50,
+          maxTransactionRetryTime: MAX_TRANSACTION_RETRY_TIME_MS,
           logging: {
             level: 'info' as const,
             logger: (level: string, message: string) =>
@@ -46,6 +57,7 @@ export async function initializeDB(): Promise<Driver> {
       : {
           connectionTimeout: 30000,
           maxConnectionPoolSize: 50,
+          maxTransactionRetryTime: MAX_TRANSACTION_RETRY_TIME_MS,
           logging: {
             level: 'info' as const,
             logger: (level: string, message: string) =>
