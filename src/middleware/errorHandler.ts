@@ -46,6 +46,20 @@ export const logLevelForError = (error: unknown): 'warn' | 'error' => {
 }
 
 /**
+ * SYN-293 — the Neo4j driver reports an unreachable database by error code,
+ * not message: routing discovery failing ("No routing servers available")
+ * is a ServiceUnavailable whose message the string checks below never
+ * matched, so a database outage answered 500 "Internal server error".
+ */
+const NEO4J_UNAVAILABLE_CODES = ['ServiceUnavailable', 'SessionExpired']
+
+export const isDatabaseUnavailable = (error: unknown): boolean =>
+  error instanceof Error &&
+  NEO4J_UNAVAILABLE_CODES.includes(
+    (error as Error & { code?: string }).code ?? '',
+  )
+
+/**
  * Global error handling middleware
  * Production-ready with proper logging and status codes
  */
@@ -119,12 +133,13 @@ export const errorHandler = (
 
     // Database connection errors (retriable)
     if (
-      error.message &&
-      (error.message.includes('ServiceUnavailable') ||
-        error.message.includes('Connection was closed') ||
-        error.message.includes('ECONNREFUSED') ||
-        error.message.includes('ETIMEDOUT') ||
-        error.message.includes('unavailable'))
+      isDatabaseUnavailable(error) ||
+      (error.message &&
+        (error.message.includes('ServiceUnavailable') ||
+          error.message.includes('Connection was closed') ||
+          error.message.includes('ECONNREFUSED') ||
+          error.message.includes('ETIMEDOUT') ||
+          error.message.includes('unavailable')))
     ) {
       return res.status(503).json({
         error: 'Database service temporarily unavailable',

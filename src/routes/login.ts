@@ -26,17 +26,22 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
     session = getSession()
 
-    const result = await session.run(
-      `MATCH (m:User:Member)
-       WHERE ($email IS NOT NULL AND m.email = $email)
-          OR ($id IS NOT NULL AND m.id = $id)
-       WITH m LIMIT 1
-       ${MEMBER_MEMBERSHIP_CALL}
-       RETURN
-         m { .id, .firstName, .lastName, .email, .password } AS member,
-         ${MEMBER_FLAGS_QUERY},
-         membership`,
-      { email, id: null },
+    // SYN-293: a managed read transaction, not session.run — the driver
+    // retries it when routing discovery briefly fails (Neo4j restart, stale
+    // connections after a Lambda freeze) instead of failing the sign-in.
+    const result = await session.executeRead((tx) =>
+      tx.run(
+        `MATCH (m:User:Member)
+         WHERE ($email IS NOT NULL AND m.email = $email)
+            OR ($id IS NOT NULL AND m.id = $id)
+         WITH m LIMIT 1
+         ${MEMBER_MEMBERSHIP_CALL}
+         RETURN
+           m { .id, .firstName, .lastName, .email, .password } AS member,
+           ${MEMBER_FLAGS_QUERY},
+           membership`,
+        { email, id: null },
+      ),
     )
 
     if (result.records.length === 0) {
